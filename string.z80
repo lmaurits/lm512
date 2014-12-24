@@ -1,0 +1,101 @@
+ConvertToUpper:
+	ld a, (hl)
+	cp $0
+	ret z
+	cp 'a'
+	jp z, ConvertToUpper_convert
+	jp c, ConvertToUpper_continue
+	cp 'z'
+	jp z, ConvertToUpper_convert
+	jp nc, ConvertToUpper_continue
+ConvertToUpper_convert:
+	sub a, 32
+	ld (hl), a
+ConvertToUpper_continue:
+	inc hl
+	jp ConvertToUpper
+
+StrCmp:
+	ld a, (hl)
+	cp $0
+	ret z
+	ld b, a
+	ld a, (de)
+	cp $0
+	ret z
+	cp b
+	ret nz
+	inc hl
+	inc de
+	jp StrCmp
+
+StrLen:
+	push hl
+	ld b, 0
+	ld a, (hl)
+	cp 0x00
+	jr z, _StrLen_end
+	inc b
+	jr StrLen
+_StrLen_end:
+	pop hl
+	ld a, b
+	ret
+
+StrTok:
+	push		hl		; Push start address of string
+	ld		a, " "		; Tokenise on whitespace
+	ld		bc, 0x00FF	; Maximum line length of 255
+	cpir				; Increment HL until we hit whitespace
+	ld		a, "\0"		; Prepare string-terminating null
+	ld		(hl), a		; Terminate string
+	inc		hl		; Advance HL to	start of next string
+	call		SkipWhitespace	; Skip over any whitespace at start of next string
+	ld		d, h		; Store start address of next string in DE
+	ld		e, l		; Store start address of next string in DE
+	pop		hl		; Pop original string start
+	ret
+
+SkipWhitespace:
+	ld a, (hl)
+	cp ' '
+	ret nz
+	inc hl
+	jp SkipWhitespace
+
+ReadByte:
+	 ld   a,d
+         call Hex1
+         add  a,a
+         add  a,a
+         add  a,a
+         add  a,a
+         ld   d,a
+         ld   a,e
+         call Hex1
+         or   d
+         ret
+
+Hex1:     sub  a,'0'
+         cp   10
+         ret  c
+         sub  a,'A'-'0'-10
+         ret
+
+NumToHex:    ld c, a   ; a = number to convert
+            call Num1
+            ld d, a
+            ld a, c
+            call Num2
+            ld e, a
+            ret  ; return with hex number in de
+
+Num1:        rra
+            rra
+            rra
+            rra
+Num2:        or $F0
+            daa
+            add a, $A0
+            adc a, $40 ; Ascii hex at this point (0 to F)   
+            ret

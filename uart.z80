@@ -1,0 +1,94 @@
+; Basic driver for NXP SCC2692 DUART
+; Register definitions
+.MRA:		equ DUARTBASE + 0x00	; Mode Register A (R/W)
+.SRA:		equ DUARTBASE + 0x01	; Status Register A (R)
+.CSRA:		equ DUARTBASE + 0x01	; Clock Select Register A (W)
+.BRG:		equ DUARTBASE + 0x02	; BRG test (R) 
+.CRA:		equ DUARTBASE + 0x02	; Command Register A (W)
+.RHRA:		equ DUARTBASE + 0x03	; Rx Holding Register A (R)
+.THRA:		equ DUARTBASE + 0x03	; Tx Holding Register A (W)
+.IPCR:		equ DUARTBASE + 0x04	; Input Port Change Register (R)
+.ACR:		equ DUARTBASE + 0x04	; Aux Control Register (W)
+.ISR:		equ DUARTBASE + 0x05	; Interrupt Status Register (R)
+.IMR:		equ DUARTBASE + 0x05	; Interrupt Mask Register (W)
+.CTU:		equ DUARTBASE + 0x06	; Counter/timer upper value (R)
+.CRUR:		equ DUARTBASE + 0x06	; Counter/timer upper preset value (W)
+.CTL:		equ DUARTBASE + 0x07	; Counter/timer lower value (R)
+.CTLR:		equ DUARTBASE + 0x07	; Counter/timer lower preset value (W)
+.MRB:		equ DUARTBASE + 0x08	; Mode Register B (R/W)
+.SRB:		equ DUARTBASE + 0x09	; Status Register B (R)
+.CSRB:		equ DUARTBASE + 0x09	; Clock Select Register B (W)
+.1X16X:		equ DUARTBASE + 0x0A	; 1X/16X Test (R)
+.CRB:		equ DUARTBASE + 0x0A	; Command Register B (W)
+.RHRB:		equ DUARTBASE + 0x0B	; Rx Holding Register B (R)
+.THRB:		equ DUARTBASE + 0x0B	; Tx Holding Register B (W)
+.RES:		equ DUARTBASE + 0x0C	; Reserved (R/W)
+.IP:		equ DUARTBASE + 0x0D	; Input Ports IP0 to IP6 (R)
+.OPCR:		equ DUARTBASE + 0x0D	; Output Port Conf. Register (W)
+.START:		equ DUARTBASE + 0x0E	; Start Counter Command (R)
+.SETOP:		equ DUARTBASE + 0x0E	; Set Output Port Bits Command (W)
+.STOP:		equ DUARTBASE + 0x0F	; Stop Counter Command (R)
+.RSTOP:		equ DUARTBASE + 0x0F	; Reset Output Port Bits Command (W)
+
+UartInit:
+	; Set mode register value
+	ld a, 00010011b
+	out (.MRA), a
+	out (.MRB), a
+	ld a, 00000111b
+	out (.MRA), a
+	out (.MRB), a
+	; Set baud rates
+	ld a, 10111011b
+	out (.CSRA), a
+	out (.CSRB), a
+	; Send enable RX/TX command
+	ld a, 00000101b
+	out (.CRA), a
+	out (.CRB), a
+	ret
+
+WaitToReadA:
+	in a, (.SRA)		; Read status reg
+	and 00000001b		; Mask off receive ready
+	xor 00000001b		; Compare receive ready to 1
+	jr nz, WaitToReadA	; Read status again if not ready
+	ret
+
+ReadA:
+	call WaitToReadA
+	in a, (.RHRA)
+	ret
+
+WaitToWriteA:
+	in a, (.SRA)		; Read status reg
+	and 00000100b		; Mask off receive ready
+	xor 00000100b		; Compare receive ready to 1
+	jr nz, WaitToWriteA	; Read status again if not ready
+	ret
+
+WriteA:
+	ld b, a
+	call WaitToWriteA
+	ld a, b
+	out (.THRA), a
+	ret
+
+PrintStringA:
+	ld a, (hl)		; Read char
+	cp "\0"			; Check for string terminator
+	ret z			; Return if end of string
+	call WriteA
+	inc hl			; Increment string pointer
+	jr PrintStringA		; loop
+
+ReadLineA:
+	call ReadA
+	call WriteA
+	ld (hl), a
+	inc hl
+	cp "\r"
+	jr nz, ReadLineA
+	ld a, "\n"
+	call WriteA
+	ret

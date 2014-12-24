@@ -1,0 +1,68 @@
+CfSetup:
+	; Activate 8 bit data transfer mode
+	call WaitBusy
+	ld a, $01		; Set features register to enable 8 bit
+	out (33), a
+	call WaitBusy
+	ld a, $EF		; Send set features command
+	out (39), a
+	call WaitBusy
+	ret
+SetLBA:
+	; Set up LBA address for start of disk
+	; Addresses 0, 1, 2 are in regs A, B, D
+	push af
+	call WaitBusy
+	pop af
+	ld a, 0
+	out (35), a		; Set LBA addresses 0
+	call WaitBusy
+	ld a, 0			; Set LBA addresses 1
+	out (36), a
+	call WaitBusy
+	ld a, 0			; Set LBA addresses 2
+	out (37), a
+	call WaitBusy
+	ld a, 224		; Set LBA 3 to 0, plus flags
+	out (38), a
+	call WaitBusy
+	ret
+SetSectorCount:
+	push af
+	call WaitBusy
+	pop af
+	out (34), a
+	ret
+SendReadCommand:
+	call WaitBusyReady	; Make sure drive is ready for command
+	ld a, $20		; Prepare read command
+	out (39), a		; Send read command
+	call WaitBusyData	; Wait until data is ready to be read
+	in a, (39)		; Read status
+	and %00000001		; mask off error bit
+	jp nz, SendReadCommand	; Try again if error
+	ret
+	ld hl, $2000		; Read to start of RAM
+	ld c, 32		; Read from port 32
+	ld b, 0			; Read 256 bytes
+	inir			; Go!
+	jp $2000		; Jump to start of loaded code
+WaitBusy:
+	in a, (39)		; Read status
+	and %10000000		;mask off busy bit
+	jr nz, WaitBusy		;we want busy(7) to be 0
+	ret
+
+WaitBusyReady:
+	in a, (39)		; Read status
+	and %11000000		;mask off busy and rdy bits
+	xor %01000000		;we want busy(7) to be 0 and rdy(6) to be 1
+	jr nz, WaitBusyReady
+	ret
+
+WaitBusyData:
+	in a, (39)		; Read status
+	and %10001000		;mask off busy and drq bits
+	xor %00001000		;we want busy(7) to be 0 and drq(3) to be 1
+	jr nz, WaitBusyData
+	ret

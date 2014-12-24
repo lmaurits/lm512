@@ -1,0 +1,321 @@
+org $4000 ; Get rid of this before burning to ROM!
+ld sp, $FFFF
+jp Main
+
+include 'iomap.z80'
+include 'uart.z80'
+include 'cf.z80'
+include 'rtc.z80'
+include 'string.z80'
+
+Main:
+	; Initialise hardware
+	call UartInit
+
+	; Print welcome message
+	ld hl, welcomestr
+	call PrintStringA
+	jp Monitor
+	welcomestr: defm "Welcome to LM-512 microcomputer system.\n\r\0"
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+Monitor:
+	ld hl, promptstr
+	call PrintStringA
+	ld hl, $2000
+	call ReadLineA
+	ld hl, $2000
+	call ConvertToUpper
+	call MonitorHandleLine
+	jp Monitor
+	promptstr: defm "> \0"
+
+MonitorHandleLine:
+	ld hl, $2000
+	ld de, bankstr
+	call StrCmp
+	jp z, BankSwitch
+
+	ld hl, $2000
+	ld de, cfloadstr
+	call StrCmp
+	jp z, CfLoad
+
+	ld hl, $2000
+	ld de, datestr
+	call StrCmp
+	jp z, Date
+
+	ld hl, $2000
+	ld de, instr
+	call StrCmp
+	jp z, In
+
+	ld hl, $2000
+	ld de, helpstr
+	call StrCmp
+	jp z, Help
+
+	ld hl, $2000
+	ld de, jumpstr
+	call StrCmp
+	jp z, Jump
+
+	ld hl, $2000
+	ld de, outstr
+	call StrCmp
+	jp z, Out
+
+	ld hl, $2000
+	ld de, peekstr
+	call StrCmp
+	jp z, Peek
+
+	ld hl, $2000
+	ld de, pokestr
+	call StrCmp
+	jp z, Poke
+
+	ld hl, $2000
+	ld de, serloadstr
+	call StrCmp
+	jp z, SerialLoad
+
+	jp What
+
+	cfloadstr:	defm "CFLOAD\0"
+	bankstr:	defm "BANK\0"
+	datestr:	defm "DATE\0"
+	instr:		defm "IN\0"
+	helpstr:	defm "HELP\0"
+	jumpstr:	defm "JUMP\0"
+	outstr:		defm "OUT\0"
+	peekstr:	defm "PEEK\0"
+	pokestr:	defm "POKE\0"
+	serloadstr:	defm "SERLOAD\0"
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+BankSwitch:
+	call SkipWhitespace
+	ld d, (hl)
+	inc hl
+	ld e, (hl)
+	inc hl
+	call ReadByte
+	out (0), a
+	jp Monitor
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+CfLoad:
+	call CfSetup
+	ld a, 0
+	ld b, 0
+	ld d, 0
+	call SetLBA
+	ld a, 1
+	call SetSectorCount
+	call SendReadCommand
+	ld hl, $3000
+	ld c, 32
+	ld b, 0
+	inir
+	jp Monitor
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+Date:
+	ld hl, $2000
+	call BuildTimeStr
+	ld hl, $2000
+	call PrintStringA
+	jp Monitor
+	
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+In:
+	call SkipWhitespace
+	ld d, (hl)
+	inc hl
+	ld e, (hl)
+	inc hl
+	call ReadByte
+	ld c, a
+	in a, (c)
+	call NumToHex
+	ld hl, $2000
+	ld (hl), d
+	inc hl
+	ld (hl), e
+	inc hl
+	ld (hl), "\n"
+	inc hl
+	ld (hl), "\r"
+	inc hl
+	ld (hl), "\0"
+	ld hl, $2000
+	call PrintStringA
+	jp Monitor
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+Help:
+	ld hl, helpmessage
+	call PrintStringA
+	jp Monitor
+	helpmessage:	defm "LM-512 Monitor commands:\n\r"
+	defm "BANK PG: Switch highest 32KB to bank PG.\n\r"
+	defm "CFLOAD: Read and execute binary code from CF card.\n\r"
+	defm "DATE: Print current date and time.\n\r"
+	defm "HELP: Print this help message.\n\r"
+	defm "JUMP ADR: Jump to address.\n\r"
+	defm "PEEK ADR: Print byte stored at address ADR.\n\r"
+	defm "POKE ADR VAL: Store byte VAL at address ADR.\n\r"
+	defm "SERLOAD: Read and execute binary code from serial port 2.\n\r\0"
+	
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+Jump:
+	call SkipWhitespace
+	ld d, (hl)
+	ld a, d
+	out (128), a
+	inc hl
+	ld e, (hl)
+	inc hl
+	push hl
+	call ReadByte
+	pop hl
+	push af
+	ld d, (hl)
+	inc hl
+	ld e, (hl)
+	call ReadByte
+	ld l, a
+	pop af
+	ld h, a	
+	jp (hl)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+Out:
+
+	; Read port number
+	call SkipWhitespace
+	ld d, (hl)
+	inc hl
+	ld e, (hl)
+	inc hl
+	call ReadByte
+	ld b, a			; port in b
+
+	call SkipWhitespace
+	ld d, (hl)
+	inc hl
+	ld e, (hl)
+	inc hl
+	call ReadByte		; value in a
+
+	ld c, b
+	out (c), a
+
+	ld hl, okaystr
+	call PrintStringA
+	jp Monitor
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+Peek:
+	call SkipWhitespace
+	ld d, (hl)
+	ld a, d
+	out (128), a
+	inc hl
+	ld e, (hl)
+	inc hl
+	push hl
+	call ReadByte
+	pop hl
+	push af
+	ld d, (hl)
+	inc hl
+	ld e, (hl)
+	call ReadByte
+	ld l, a
+	pop af
+	ld h, a	
+	ld a, (hl)
+	call NumToHex
+	ld hl, $2000
+	ld (hl), d
+	inc hl
+	ld (hl), e
+	inc hl
+	ld (hl), "\n"
+	inc hl
+	ld (hl), "\r"
+	inc hl
+	ld (hl), "\0"
+	ld hl, $2000
+	call PrintStringA
+	jp Monitor
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+Poke:
+	; Read address
+	call SkipWhitespace
+	ld d, (hl)
+	ld a, d
+	out (128), a
+	inc hl
+	ld e, (hl)
+	inc hl
+	call ReadByte
+	ld b, a			; MSB in b
+	ld d, (hl)
+	inc hl
+	ld e, (hl)
+	inc hl
+	call ReadByte		; LSB in a
+	push hl			; Put string pointer on stack
+	ld h, b			; Move peek address to HL
+	ld l, a
+	ex (sp), hl		; addr on stack, str ptr in HL
+	; Read value
+	call SkipWhitespace
+	ld d, (hl)
+	inc hl
+	ld e, (hl)
+	inc hl
+	call ReadByte
+	; Make change
+	pop hl
+	ld (hl), a
+	ld hl, okaystr
+	call PrintStringA
+	jp Monitor
+	okaystr: defm "Okay\n\r\0"
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+SerialLoad:
+	jp NotImp
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+NotImp:
+	ld hl, notimpstr
+	call PrintStringA
+	jp Monitor
+	notimpstr: defm "Sorry, not implemented yet!\n\r\0"
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+What:
+	ld hl, whatstr
+	call PrintStringA
+	jp Monitor
+	whatstr: defm "What?\n\r\0"

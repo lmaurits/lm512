@@ -1,0 +1,66 @@
+; Basic driver for TI BQ4845 RTC
+; Register definitions
+.SEC:		equ RTCBASE + 0x00	; Seconds
+.SECALM:	equ RTCBASE + 0x01	; Seconds alarm
+.MIN:		equ RTCBASE + 0x02	; Minutes
+.MINALM:	equ RTCBASE + 0x03	; Minutes alarm
+.HR:		equ RTCBASE + 0x04	; Hours
+.HRALM:		equ RTCBASE + 0x05	; Hours alarm
+.DAY:		equ RTCBASE + 0x06	; Day
+.DAYALM:	equ RTCBASE + 0x07	; Day alarm
+.DOW:		equ RTCBASE + 0x08	; Day of week
+.MTH:		equ RTCBASE + 0x09	; Month
+.YR:		equ RTCBASE + 0x0A	; Year
+.RATES:		equ RTCBASE + 0x0B	; Programmable rates
+.IE:		equ RTCBASE + 0x0C	; Interrupt enables
+.FLGS:		equ RTCBASE + 0x0D	; Flags
+.CTRL:		equ RTCBASE + 0x0E	; Control
+.UNSD:		equ RTCBASE + 0x0F	; Unused
+
+SetUpdateInhibit:
+	ld a, 00001110b
+	out (.CTRL), a
+	ret
+
+UnsetUpdateInhibit:
+	ld a, 00000110b
+	out (.CTRL), a
+	ret
+
+BuildTimeStr:
+	call SetUpdateInhibit
+	in a, (.HR)	; Read hours
+	call WriteComponent
+	ld (hl), ":"
+	inc hl
+	in a, (.MIN)	; Read minutes
+	call WriteComponent
+	ld (hl), ":"
+	inc hl
+	in a, (.SEC)	; Read seconds
+	call WriteComponent
+	call UnsetUpdateInhibit
+	ld (hl), "\n"
+	inc hl
+	ld (hl), "\r"
+	inc hl
+	ld (hl), "\0"
+	inc hl
+	ret
+
+WriteComponent:
+	ld b, a			; Copy
+	srl a			; Shift down 10 digi
+	srl a
+	srl a
+	srl a
+	and 00000111b		; Mask off AM/PM
+	add a, 48			; Convert to  ASCII
+	ld (hl), a
+	inc hl
+	ld a, b
+	and 00001111b
+	add a, 48	; ASCII
+	ld (hl), a
+	inc hl
+	ret
