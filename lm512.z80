@@ -1,9 +1,11 @@
-org $4000 ; Get rid of this before burning to ROM!
-ld sp, $FFFF
-jp Main
+include 'memmap.z80'
+include 'iomap.z80'
+
+	org		ROMBASE
+	ld		sp, SYSSTACK
+	jp		Main
 
 ;include 'debug.z80'
-include 'iomap.z80'
 include 'uart.z80'
 include 'cf.z80'
 include 'rtc.z80'
