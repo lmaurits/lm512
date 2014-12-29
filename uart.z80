@@ -74,21 +74,28 @@ WriteA:
 	out (.THRA), a
 	ret
 
-PrintStringA:
-	ld a, (hl)		; Read char
-	cp "\0"			; Check for string terminator
-	ret z			; Return if end of string
-	call WriteA
-	inc hl			; Increment string pointer
-	jr PrintStringA		; loop
+WaitToReadB:
+	in a, (.SRB)		; Read status reg
+	and 00000001b		; Mask off receive ready
+	xor 00000001b		; Compare receive ready to 1
+	jr nz, WaitToReadB	; Read status again if not ready
+	ret
 
-ReadLineA:
-	call ReadA
-	call WriteA
-	ld (hl), a
-	inc hl
-	cp "\r"
-	jr nz, ReadLineA
-	ld a, "\n"
-	call WriteA
+ReadB:
+	call WaitToReadB
+	in a, (.RHRB)
+	ret
+
+WaitToWriteB:
+	in a, (.SRB)		; Read status reg
+	and 00000100b		; Mask off receive ready
+	xor 00000100b		; Compare receive ready to 1
+	jr nz, WaitToWriteB	; Read status again if not ready
+	ret
+
+WriteB:
+	ld b, a
+	call WaitToWriteB
+	ld a, b
+	out (.THRB), a
 	ret

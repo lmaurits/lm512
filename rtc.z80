@@ -27,6 +27,29 @@ UnsetUpdateInhibit:
 	out (.CTRL), a
 	ret
 
+SetTimeFromString:
+	call		SetUpdateInhibit
+	call		ReadBCDByte
+	res		7, a			; Strip 7th bit
+	out		(.YR), a
+	call		ReadBCDByte
+	res		7, a			; Strip 7th bit
+	out		(.MTH), a
+	call		ReadBCDByte
+	res		7, a			; Strip 7th bit
+	out		(.DAY), a
+	call		ReadBCDByte
+	res		7, a			; Strip 7th bit
+	out		(.HR), a
+	call		ReadBCDByte
+	res		7, a			; Strip 7th bit
+	out		(.MIN), a
+	call		ReadBCDByte
+	res		7, a			; Strip 7th bit
+	out		(.SEC), a
+	call UnsetUpdateInhibit
+	ret
+
 BuildTimeStr:
 	call SetUpdateInhibit
 	in a, (.HR)	; Read hours

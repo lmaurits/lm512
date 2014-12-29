@@ -1,19 +1,50 @@
 ConvertToUpper:
+	push		hl
+ConvertToUpper00:
 	ld a, (hl)
 	cp $0
-	ret z
+	jp		z, ConvertToUpper03
 	cp 'a'
-	jp z, ConvertToUpper_convert
-	jp c, ConvertToUpper_continue
+	jp z, ConvertToUpper01
+	jp c, ConvertToUpper02
 	cp 'z'
-	jp z, ConvertToUpper_convert
-	jp nc, ConvertToUpper_continue
-ConvertToUpper_convert:
+	jp z, ConvertToUpper01
+	jp nc, ConvertToUpper02
+ConvertToUpper01:
 	sub a, 32
 	ld (hl), a
-ConvertToUpper_continue:
+ConvertToUpper02:
 	inc hl
-	jp ConvertToUpper
+	jp ConvertToUpper00
+ConvertToUpper03:
+	pop		hl
+	ret
+
+PrintStringA:
+	ld		a, (hl)
+	cp		"\0"
+	ret		z
+	call		WriteA
+	inc		hl
+	jr		PrintStringA
+
+ReadLineA:
+	push		hl
+	ld		b, 0
+ReadLineA00:
+	call		ReadA
+	call		WriteA
+	ld		(hl), a
+	inc		hl
+	inc		b
+	cp		"\r"
+	jr		nz, ReadLineA00
+	ld		a, "\n"
+	call		WriteA
+	dec		hl
+	ld		(hl), "\0"
+	pop		hl
+	ret
 
 StrCmp:
 	ld a, (hl)
@@ -32,25 +63,91 @@ StrCmp:
 StrLen:
 	push hl
 	ld b, 0
+StrLen00:
 	ld a, (hl)
-	cp 0x00
-	jr z, _StrLen_end
+	cp "\0"
+	jr z, StrLen01
+	inc hl
 	inc b
-	jr StrLen
-_StrLen_end:
+	jr StrLen00
+StrLen01:
 	pop hl
 	ld a, b
 	ret
 
+IsStrDec:
+	push hl
+IsStrDec00:
+	ld		a, (hl)
+	; Test for end of string
+	cp		"\0"
+	jr		z, IsStrDecTrue
+	; Fail if < "0"
+	cp		"0"
+	jr		c, IsStrDecFalse
+	; Continue if <= "9" (< "9"+1)
+	cp		"9"+1
+	jr		c, IsStrDecContinue
+	cp		"9"
+	; Fall through to fail otherwise
+IsStrDecFalse:
+	or		1	; Reset zero flag
+	pop		hl
+	ret
+IsStrDecTrue:
+	cp		a	; Set zero flag
+	pop		hl
+	ret
+IsStrDecContinue:
+	inc		hl
+	jr		IsStrDec00
+
+IsStrHex:
+	push hl
+IsStrHex00:
+	ld		a, (hl)
+	; Test for end of string
+	cp		"\0"
+	jr		z, IsStrHexTrue
+	; Fail if < "0"
+	cp		"0"
+	jr		c, IsStrHexFalse
+	; Continue if <= "9" (< "9"+1)
+	cp		"9"+1
+	jr		c, IsStrHexContinue
+	; Fail if < "A"
+	cp		"0"
+	jr		c, IsStrHexFalse
+	; Continue if <= "F" (< "F"+1)
+	cp		"F"+1
+	jr		c, IsStrHexContinue
+	; Fall through to fail otherwise
+IsStrHexFalse:
+	or		1	; Reset zero flag
+	pop		hl
+	ret
+IsStrHexTrue:
+	cp		a	; Set zero flag
+	pop hl
+	ret
+IsStrHexContinue:
+	inc		hl
+	jr		IsStrHex00
+
 StrTok:
 	push		hl		; Push start address of string
-	ld		a, " "		; Tokenise on whitespace
-	ld		bc, 0x00FF	; Maximum line length of 255
-	cpir				; Increment HL until we hit whitespace
-	ld		a, "\0"		; Prepare string-terminating null
-	ld		(hl), a		; Terminate string
+StrTok00:
+	ld		a, (hl)
+	cp		" "
+	jr		z, StrTok01
+	cp		"\0"
+	jr		z, StrTok02
+	inc		hl
+	jr		StrTok00
+StrTok01:
+	ld		(hl), "\0"	; Terminate string
+StrTok02:
 	inc		hl		; Advance HL to	start of next string
-	call		SkipWhitespace	; Skip over any whitespace at start of next string
 	ld		d, h		; Store start address of next string in DE
 	ld		e, l		; Store start address of next string in DE
 	pop		hl		; Pop original string start
@@ -82,6 +179,62 @@ Hex1:     sub  a,'0'
          sub  a,'A'-'0'-10
          ret
 
+;;;;;;;;;;;;;;;;;;;;;;;;
+
+Read8bit:
+	; HL is a pointer to a two-char string
+	; This is read as an 8 bit hex number
+	; The number is stored in A
+	ld		a, (hl)		; Copy first char to A
+        call		Hex12		; Convert first char
+        add		a, a		; Multiply by 16...
+        add		a, a		; ...
+        add		a, a		; ...
+        add		a, a		; ...done!
+        ld		d, a		; Store top 4 bits in D
+	inc		hl		; Advance to next char
+        ld		a, (hl)
+        call		Hex12		; Convert second char
+        or		d		; Add back top bits
+	inc		hl		; Advance for next guy
+        ret
+
+Read16bit:	
+	; HL is a pointer to a four-char string
+	; This is read as a 16 bit hex number
+	; The number is stored in BC
+	call		Read8bit
+	ld		b, a
+	call		Read8bit
+	ld		c, a
+	ret
+
+ReadBCDByte:
+	; HL is a pointer to a two-char string
+	; This is read as a decimal number (assumed <=80)
+	; The number is stored in A in BCD format
+	ld		a, (hl)
+	inc		hl
+	sub		"0"
+	sla		a
+	sla		a
+	sla		a
+	sla		a
+	ld		b, a
+	ld		a, (hl)
+	inc		hl
+	sub		"0"
+	or		b
+	ret
+
+Hex12:	sub		a, '0'
+        cp		10
+        ret		c
+        sub		a,'A'-'0'-10
+        ret
+
+;;;;;;;;;;;;;;;;;;;;;;;;
+	
 NumToHex:    ld c, a   ; a = number to convert
             call Num1
             ld d, a
@@ -89,7 +242,7 @@ NumToHex:    ld c, a   ; a = number to convert
             call Num2
             ld e, a
             ret  ; return with hex number in de
-
+	
 Num1:        rra
             rra
             rra
@@ -99,3 +252,36 @@ Num2:        or $F0
             add a, $A0
             adc a, $40 ; Ascii hex at this point (0 to F)   
             ret
+		
+;;;;;;;;;;;;;;;;;;;;;;;;
+
+TerminateLine:
+	ld		(hl), "\n"
+	inc		hl
+	ld		(hl), "\r"
+	inc		hl
+	ld		(hl), "\0"
+	ret
+
+;;;;;;;;;;;;;;;;;;;;;;;;
+	
+StrfHex:
+	; Convert byte in A to two-char hex and append to HL
+	ld		c, a   ; a = number to convert
+	call		Num12
+	ld		(hl), a
+	inc		hl
+	ld		a, c
+	call		Num22
+	ld		(hl), a
+	inc		hl
+	ret
+Num12:        rra
+            rra
+            rra
+            rra
+Num22:        or $F0
+            daa
+            add a, $A0
+            adc a, $40 ; Ascii hex at this point (0 to F)   
+		ret
