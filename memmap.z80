@@ -1,3 +1,9 @@
 ROMBASE:	equ 0x0000
 RAMBASE:	equ 0x2000
 SYSSTACK:	equ 0x8000
+
+linebuf:	equ RAMBASE
+argc:		equ linebuf+256
+argv:		equ argc+2
+argv_index:	equ argv+32
+dispatch_index:	equ argv_index+2

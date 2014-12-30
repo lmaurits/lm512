@@ -1,3 +1,4 @@
+; Definitional includes
 include 'memmap.z80'
 include 'iomap.z80'
 
@@ -5,16 +6,12 @@ include 'iomap.z80'
 	ld		sp, SYSSTACK
 	jp		Main
 
+; Code generating includes
 ;include 'debug.z80'
 include 'uart.z80'
 include 'cf.z80'
 include 'rtc.z80'
 include 'string.z80'
-
-proto_hello: equ $00
-proto_hello_ack: equ $0F
-proto_bytes: equ $F0
-proto_send:  equ $FF
 
 Main:
 	; Initialise hardware
@@ -27,41 +24,12 @@ Main:
 	welcomestr: defm "Welcome to LM-512 microcomputer system.\n\r\0"
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; MONITOR COMMAND LINE INTERFACE
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-linebuf:	defs 255
-argc:		defb 0
-argv:		defs 20
-argv_index:	defw argv
-
-cfloadstr:	defm "CFLOAD\0"
-bankstr:	defm "BANK\0"
-datestr:	defm "DATE\0"
-instr:		defm "IN\0"
-helpstr:	defm "HELP\0"
-jumpstr:	defm "JUMP\0"
-memcpystr:	defm "MEMCPY\0"
-outstr:		defm "OUT\0"
-peekstr:	defm "PEEK\0"
-pokestr:	defm "POKE\0"
-serloadstr:	defm "SERLOAD\0"
-nullstr:	defm "\0"
-
-dispatch_table:
-	defw cfloadstr, CfLoad
-	defw bankstr, Bank
-	defw datestr, Date
-	defw instr, In
-	defw helpstr, Help
-	defw jumpstr, Jump
-	defw memcpystr, Memcpy
-	defw outstr, Out
-	defw peekstr, Peek
-	defw pokestr, Poke
-	defw serloadstr, SerialLoad
-	defw nullstr, What
-dispatch_index:
-	defw dispatch_table
-
+; Infinite loop of read, parse, dispatch
 Monitor:
 	ld hl, promptstr
 	call PrintStringA
@@ -117,6 +85,44 @@ ParseLine00:
 	call		StrTok
 	jr		ParseLine00
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; COMMAND DISPATCH
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; Command strings
+
+cfloadstr:	defm "CFLOAD\0"
+bankstr:	defm "BANK\0"
+datestr:	defm "DATE\0"
+instr:		defm "IN\0"
+helpstr:	defm "HELP\0"
+jumpstr:	defm "JUMP\0"
+memcpystr:	defm "MEMCPY\0"
+outstr:		defm "OUT\0"
+peekstr:	defm "PEEK\0"
+pokestr:	defm "POKE\0"
+serloadstr:	defm "SERLOAD\0"
+nullstr:	defm "\0"
+
+; Table linking command strings to function entry points
+dispatch_table:
+	defw cfloadstr, CfLoad
+	defw bankstr, Bank
+	defw datestr, Date
+	defw instr, In
+	defw helpstr, Help
+	defw jumpstr, Jump
+	defw memcpystr, Memcpy
+	defw outstr, Out
+	defw peekstr, Peek
+	defw pokestr, Poke
+	defw serloadstr, SerialLoad
+	defw nullstr, What
+
+; Function which interprets the string pointed to by HL
+; as a command and calls the appropriate function
 Dispatch:
 	ld		hl, dispatch_table
 	ld		(dispatch_index), hl
@@ -151,6 +157,12 @@ Dispatch01:
 	ld		h, a
 	jp		(hl)
 
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; MONITOR COMMANDS
+;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 Bank:
@@ -457,6 +469,11 @@ Poke00:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+proto_hello: equ $00
+proto_hello_ack: equ $0F
+proto_bytes: equ $F0
+proto_send:  equ $FF
+
 SerialLoad:
 	; Check argc
 	ld		a, (argc)
@@ -523,6 +540,12 @@ What:
 	call PrintStringA
 	ret
 	whatstr: defm "What?\n\r\0"
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; UTILITY FUNCTIONS
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ValidateValue:
 	call		StrLen
