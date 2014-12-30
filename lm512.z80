@@ -518,14 +518,6 @@ SerialLoadStr:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-NotImp:
-	ld hl, notimpstr
-	call PrintStringA
-	ret
-	notimpstr: defm "Sorry, not implemented yet!\n\r\0"
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 What:
 	ld hl, whatstr
 	call PrintStringA
