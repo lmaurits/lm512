@@ -313,7 +313,7 @@ Help:
 	ret
 	helpmessage:	defm "LM-512 Monitor commands:\n\r"
 	defm "BANK PG: Switch highest 32KB to bank PG.\n\r"
-	defm "CFLOAD ADR SEC: Read SEC 512 byte sectors of data from CF card to address ADR.\n\r"
+	defm "CFLOAD ADR SEC: Read SEC 512 byte sectors from CF card to address ADR.\n\r"
 	defm "DATE: Print current date and time.\n\r"
 	defm "HELP: Print this help message.\n\r"
 	defm "IN PORT: Read byte from given I/O port.\n\r"
