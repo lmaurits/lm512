@@ -160,25 +160,6 @@ SkipWhitespace:
 	inc hl
 	jp SkipWhitespace
 
-ReadByte:
-	 ld   a,d
-         call Hex1
-         add  a,a
-         add  a,a
-         add  a,a
-         add  a,a
-         ld   d,a
-         ld   a,e
-         call Hex1
-         or   d
-         ret
-
-Hex1:     sub  a,'0'
-         cp   10
-         ret  c
-         sub  a,'A'-'0'-10
-         ret
-
 ;;;;;;;;;;;;;;;;;;;;;;;;
 
 Read8bit:
@@ -235,26 +216,6 @@ Hex12:	sub		a, '0'
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 	
-NumToHex:    ld c, a   ; a = number to convert
-            call Num1
-            ld d, a
-            ld a, c
-            call Num2
-            ld e, a
-            ret  ; return with hex number in de
-	
-Num1:        rra
-            rra
-            rra
-            rra
-Num2:        or $F0
-            daa
-            add a, $A0
-            adc a, $40 ; Ascii hex at this point (0 to F)   
-            ret
-		
-;;;;;;;;;;;;;;;;;;;;;;;;
-
 TerminateLine:
 	ld		(hl), "\n"
 	inc		hl
@@ -268,19 +229,19 @@ TerminateLine:
 StrfHex:
 	; Convert byte in A to two-char hex and append to HL
 	ld		c, a   ; a = number to convert
-	call		Num12
+	call		Num1
 	ld		(hl), a
 	inc		hl
 	ld		a, c
-	call		Num22
+	call		Num2
 	ld		(hl), a
 	inc		hl
 	ret
-Num12:        rra
+Num1:        rra
             rra
             rra
             rra
-Num22:        or $F0
+Num2:        or $F0
             daa
             add a, $A0
             adc a, $40 ; Ascii hex at this point (0 to F)   
