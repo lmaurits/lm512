@@ -305,6 +305,7 @@ Help:
 	defm "DATE: Print current date and time.\n\r"
 	defm "HELP: Print this help message.\n\r"
 	defm "JUMP ADR: Jump to address.\n\r"
+	defm "MEMCPY DEST SRC BYTES: Copy BYTES consecutive bytes from SRC to DEST\n\r"
 	defm "PEEK ADR: Print byte stored at address ADR.\n\r"
 	defm "POKE ADR VAL: Store byte VAL at address ADR.\n\r"
 	defm "SERLOAD ADR: Read data from serial port 2 to address ADR.\n\r\0"
