@@ -67,6 +67,10 @@ Monitor:
 	call PrintStringA
 	ld hl, linebuf
 	call ReadLineA
+	ld hl, linebuf
+	ld a, (hl)
+	cp		"\0"
+	jr		z, Monitor
 	call MonitorHandleLine
 	jr Monitor
 	promptstr: defm "> \0"
