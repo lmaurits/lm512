@@ -198,7 +198,10 @@ CfLoad00:
 	; Validate value
 	ld		hl, (argv+2)
 	call		ValidateValue
-	ret		nz
+	jr		z, CfLoad01
+	pop		bc
+	ret
+CfLoad01:
 	; Convert and stash value
 	call		Read8bit
 	push		af
@@ -217,14 +220,14 @@ CfLoad00:
 	; Retreive loading address
 	pop		af	; sector count in a
 	pop		hl	; start address
-CfLoad01:
+CfLoad02:
 	ld		c, 32	; port address
 	ld		b, 0	; read 256 bytes
 	inir
 	inir			; read second half of sector
 	dec		a
 	cp		0
-	jr		nz, CfLoad01
+	jr		nz, CfLoad02
 	ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
