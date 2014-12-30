@@ -96,6 +96,7 @@ ParseLine00:
 cfloadstr:	defm "CFLOAD\0"
 bankstr:	defm "BANK\0"
 datestr:	defm "DATE\0"
+dumpstr:	defm "DUMP\0"
 instr:		defm "IN\0"
 helpstr:	defm "HELP\0"
 jumpstr:	defm "JUMP\0"
@@ -111,6 +112,7 @@ dispatch_table:
 	defw cfloadstr, CfLoad
 	defw bankstr, Bank
 	defw datestr, Date
+	defw dumpstr, Dump
 	defw instr, In
 	defw helpstr, Help
 	defw jumpstr, Jump
@@ -285,6 +287,62 @@ ValidateDateStringErrStr:
 	
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+Dump:
+	; Check argument count
+	ld		a, (argc)
+	cp		1
+	jr		z, Dump00
+	ld		hl, DumpArgcErrorStr
+	call		PrintStringA
+	ret
+DumpArgcErrorStr:
+	defm		"DUMP expects exactly one arg (4 digit hex address)\r\n\0"
+Dump00:
+	ld		hl, (argv)
+	call		ValidateAddress
+	jr		z, Dump01
+	ret
+Dump01:
+	call		Read16bit	; Read address into BC
+	ld		d, b
+	ld		e, c
+	ld		b, 16
+	push		bc
+DumpOuter:
+	ld		hl, linebuf
+	ld		b, 16
+DumpInner:
+	ld		a, d
+	call		StrfHex
+	ld		a, e
+	call		StrfHex
+	ld		(hl), "\t"
+	inc		hl
+DumpInner2:
+	ld		a, (de)		; Read from BC to A
+	call		StrfHex
+	ld		(hl), " "
+	inc		hl
+	dec		b
+	ld		a, b
+	cp		0
+	jr		z, Dump03
+	inc		de
+	jr		DumpInner2
+Dump03:
+	pop		bc
+	dec		b
+	ld		a, b
+	cp		0
+	ret		z, Dump04
+	push		bc
+	call		TerminateLine
+	ld		hl, linebuf
+	call		PrintStringA
+	jr		DumpOuter
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 In:
 	ld		a, (argc)
 	cp		1
@@ -315,6 +373,7 @@ Help:
 	defm "BANK PG: Switch highest 32KB to bank PG.\n\r"
 	defm "CFLOAD ADR SEC: Read SEC 512 byte sectors from CF card to address ADR.\n\r"
 	defm "DATE: Print current date and time.\n\r"
+	defm "DUMP ADR: Dump 256 bytes of memory starting from ADR in hex format.\n\r"
 	defm "HELP: Print this help message.\n\r"
 	defm "IN PORT: Read byte from given I/O port.\n\r"
 	defm "JUMP ADR: Jump to address.\n\r"
