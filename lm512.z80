@@ -262,13 +262,11 @@ ValidateDateString:
 	jr		nz, ValidateDateStringErr
 ValidateDateStringOkay:
 	cp		a	; Set zero flag
-	pop		hl
 	ret
 ValidateDateStringErr:
 	ld		hl, ValidateDateStringErrStr
 	call		PrintStringA
 	or		1	; Reset zero flag
-	pop		hl
 	ret
 ValidateDateStringErrStr:
 	defm		"Date setting requires a 12 digit decimal string in YYMMDDHHmmSS format\r\n\0"
