@@ -334,15 +334,15 @@ DumpInner2:
 	jr		z, Dump03
 	jr		DumpInner2
 Dump03:
+	call		TerminateLine
+	ld		hl, linebuf
+	call		PrintStringA
 	pop		bc
 	dec		b
 	ld		a, b
 	cp		0
-	ret		z, Dump04
+	ret		z
 	push		bc
-	call		TerminateLine
-	ld		hl, linebuf
-	call		PrintStringA
 	jr		DumpOuter
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
