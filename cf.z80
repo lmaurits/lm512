@@ -26,26 +26,28 @@ CfSetup:
 	ret
 SetLBA:
 	; Set up LBA address for start of disk
-	; Addresses 0, 1, 2 are in regs A, B, D
+	; Addresses 0, 1, 2 are in regs B, C, D and E
 	push		af
 	call		WaitBusy
 	pop		af
-	ld		a, 0
+	ld		a, b
 	out		(.LBA0), a	; Set LBA addresses 0
 	call		WaitBusy
-	ld		a, 0		; Set LBA addresses 1
+	ld		a, c
 	out		(.LBA1), a
 	call		WaitBusy
-	ld		a, 0		; Set LBA addresses 2
+	ld		a, d
 	out		(.LBA2), a
 	call		WaitBusy
-	ld		a, 224		; Set LBA 3 to 0, plus flags
+	ld		a, e
+	and		00001111b	; mask off non-address bits
+	or		11100000b	; set LBA mode, drive 0
 	out		(.LBA3), a
 	call		WaitBusy
 	ret
 SetSectorCount:
 	push		af
-	call		 WaitBusy
+	call		WaitBusy
 	pop		af
 	out		(.SECCO), a
 	ret

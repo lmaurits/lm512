@@ -222,9 +222,10 @@ CfLoad01:
 	push		af
 	; Set up transfer
 	call		CfSetup
-	ld		a, 0
 	ld		b, 0
+	ld		c, 0
 	ld		d, 0
+	ld		e, 0
 	call		SetLBA
 	; Set sector count
 	pop		af
