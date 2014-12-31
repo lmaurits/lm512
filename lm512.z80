@@ -94,6 +94,7 @@ ParseLine00:
 ; Command strings
 
 cfloadstr:	defm "CFLOAD\0"
+cfsavestr:	defm "CFSAVE\0"
 bankstr:	defm "BANK\0"
 datestr:	defm "DATE\0"
 dumpstr:	defm "DUMP\0"
@@ -110,6 +111,7 @@ nullstr:	defm "\0"
 ; Table linking command strings to function entry points
 dispatch_table:
 	defw cfloadstr, CfLoad
+	defw cfsavestr, CfSave
 	defw bankstr, Bank
 	defw datestr, Date
 	defw dumpstr, Dump
@@ -248,6 +250,67 @@ CfLoad02:
 	ret
 CfLoadErrorStr:
 	defm		"CFLOAD expects exactly three args (A 4 digit hex destination address, a 6 digit hex start sector and a 2 digit hex sector count)\r\n\0"
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+CfSave:
+	; Check argument count
+	ld		a, (argc)
+	cp		3
+	jr		z, CfSave00
+	ld		hl, CfSaveErrorStr
+	call		PrintStringA
+	ret
+CfSave00:
+	; Validate sector
+	ld		hl, (argv)
+	call		ValidateSector
+	ret		nz
+	call		CfSetup
+	call		Read16bit
+	push		bc
+	call		Read16bit
+	pop		de
+	call		SetLBA
+	; Validate address
+	ld		hl, (argv+2)
+	call		ValidateAddress
+	ret		nz
+	; Convert and stash address
+	call		Read16bit
+	push		bc
+	; Validate value
+	ld		hl, (argv+4)
+	call		ValidateValue
+	jr		z, CfSave01
+	pop		bc	; Get rid of stacked bc before ret
+	ret
+CfSave01:
+	; Convert and stash value
+	call		Read8bit
+	push		af
+	; Set sector count
+	call		SetSectorCount
+	; Tell drive we want to write
+	call		SendWriteCommand
+	; Retreive loading address
+	pop		af	; sector count in a
+	pop		hl	; start address in hl
+CfSave02:
+	ld		b, a
+	call		WaitBusyData
+	ld		a, b
+	ld		c, 32	; port address
+	ld		b, 0	; read 256 bytes
+	otir
+	otir			; read second half of sector
+	dec		a
+	cp		0
+	jr		nz, CfSave02
+	ret
+CfSaveErrorStr:
+	defm		"CFSAVE expects exactly three args (a 6 digit hex start sector, a 4 digit start address and a 2 digit hex sector count)\r\n\0"
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
