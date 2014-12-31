@@ -27,9 +27,7 @@ CfSetup:
 SetLBA:
 	; Set up LBA address for start of disk
 	; Addresses 0, 1, 2 are in regs B, C, D and E
-	push		af
 	call		WaitBusy
-	pop		af
 	ld		a, c
 	out		(.LBA0), a	; Set LBA addresses 0
 	call		WaitBusy
