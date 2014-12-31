@@ -30,16 +30,16 @@ SetLBA:
 	push		af
 	call		WaitBusy
 	pop		af
-	ld		a, b
+	ld		a, c
 	out		(.LBA0), a	; Set LBA addresses 0
 	call		WaitBusy
-	ld		a, c
+	ld		a, b
 	out		(.LBA1), a
 	call		WaitBusy
-	ld		a, d
+	ld		a, e
 	out		(.LBA2), a
 	call		WaitBusy
-	ld		a, e
+	ld		a, d
 	and		00001111b	; mask off non-address bits
 	or		11100000b	; set LBA mode, drive 0
 	out		(.LBA3), a
