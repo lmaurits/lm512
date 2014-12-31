@@ -320,6 +320,7 @@ DumpInner:
 	inc		hl
 DumpInner2:
 	ld		a, (de)		; Read from BC to A
+	inc		de
 	call		StrfHex
 	ld		(hl), " "
 	inc		hl
@@ -327,7 +328,6 @@ DumpInner2:
 	ld		a, b
 	cp		0
 	jr		z, Dump03
-	inc		de
 	jr		DumpInner2
 Dump03:
 	pop		bc
