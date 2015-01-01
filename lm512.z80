@@ -241,6 +241,10 @@ CfLoad00:
 	; Validate sector
 	ld		hl, (argv+2)
 	call		ValidateSector
+	jr		z, CfLoad01
+	pop		bc	; Get rid of previous stacked BC before ret
+	ret
+CfLoad01:
 	ret		nz
 	call		CfSetup
 	call		Read16bit
@@ -251,10 +255,10 @@ CfLoad00:
 	; Validate value
 	ld		hl, (argv+4)
 	call		ValidateValue
-	jr		z, CfLoad01
+	jr		z, CfLoad02
 	pop		bc
 	ret
-CfLoad01:
+CfLoad02:
 	; Convert and stash value
 	call		Read8bit
 	push		af
@@ -265,7 +269,7 @@ CfLoad01:
 	; Retreive loading address
 	pop		af	; sector count in a
 	pop		hl	; start address
-CfLoad02:
+CfLoad03:
 	ld		b, a
 	call		WaitBusyData
 	ld		a, b
@@ -275,7 +279,7 @@ CfLoad02:
 	inir			; read second half of sector
 	dec		a
 	cp		0
-	jr		nz, CfLoad02
+	jr		nz, CfLoad03
 	ret
 CfLoadErrorStr:
 	defm		"CFLOAD expects exactly three args (A 4 digit hex destination address, a 6 digit hex start sector and a 2 digit hex sector count)\r\n\0"
@@ -526,13 +530,20 @@ Memcpy00:
 	; Validate, parse and push source
 	ld		hl, (argv+2)
 	call		ValidateAddress
-	ret		nz
+	jr		z, Memcpy01
+	pop		bc
+	ret
+Memcpy01:
 	call		Read16bit
 	push		bc	
 	; Validate, parse and push count
 	ld		hl, (argv+4)
 	call		ValidateAddress
-	ret		nz
+	jr		z, Memcpy02
+	pop		bc
+	pop		bc
+	ret
+Memcpy02:
 	call		Read16bit
 	pop		hl
 	pop		de
