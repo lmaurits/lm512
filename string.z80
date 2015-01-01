@@ -38,12 +38,29 @@ ReadLineA00:
 	inc		hl
 	inc		b
 	cp		"\r"
-	jr		nz, ReadLineA00
+	jr		z, ReadLineA01
+	cp		0x03 ; Ctrl-C
+	jr		z, ReadLineA02
+	jr		ReadLineA00
+ReadLineA01:
+	; Handle Enter
 	ld		a, "\n"
 	call		WriteA
 	dec		hl
 	ld		(hl), "\0"
 	pop		hl
+	cp		a	; Set zero flag
+	ret
+ReadLineA02:
+	; Handle Ctrl-C
+	ld		a, "\r"
+	call		WriteA
+	ld		a, "\n"
+	call		WriteA
+	dec		hl
+	ld		(hl), "\0"
+	pop		hl
+	or		1	; Reset zero flag
 	ret
 
 StrCmp:
