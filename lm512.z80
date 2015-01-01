@@ -95,6 +95,7 @@ ParseLine00:
 
 ; Command strings
 
+cfbootstr:	defm "CFBOOT\0"
 cfloadstr:	defm "CFLOAD\0"
 cfsavestr:	defm "CFSAVE\0"
 bankstr:	defm "BANK\0"
@@ -113,6 +114,7 @@ nullstr:	defm "\0"
 
 ; Table linking command strings to function entry points
 dispatch_table:
+	defw cfbootstr, CfBoot
 	defw cfloadstr, CfLoad
 	defw cfsavestr, CfSave
 	defw bankstr, Bank
@@ -195,6 +197,29 @@ FooStr: defm		"Foo\r\n\0"
 BarStr: defm		"Bar\r\n\0"
 BazStr: defm		"Baz\r\n\0"
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+CfBoot:
+	; Read first sector to disk buffer
+	call		CfSetup
+	ld		b, 0
+	ld		c, 0
+	ld		d, 0
+	ld		e, 0
+	call		SetLBA
+	ld		a, 1
+	call		SetSectorCount
+	call		SendReadCommand
+	call		WaitBusyData
+	; Transfer disk buffer to RAM
+	ld		hl, RAMBASE
+	ld		c, 32	; port address
+	ld		b, 0	; read 256 bytes
+	inir
+	inir			; read second half of sector
+	; Execute
+	jp		RAMBASE
+	
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 CfLoad:
