@@ -31,17 +31,19 @@ Main:
 
 ; Infinite loop of read, parse, dispatch
 Monitor:
-	ld hl, promptstr
-	call PrintStringA
-	ld hl, linebuf
-	call ReadLineA
-	ld hl, linebuf
-	ld a, (hl)
+	ld		hl, promptstr
+	call		PrintStringA
+	ld		hl, linebuf
+	call		ReadLineA
+	jr		nz, Monitor ; User stopped input using Ctrl-C
+	ld		hl, linebuf
+	ld		a, (hl)
 	cp		"\0"
 	jr		z, Monitor
-	call MonitorHandleLine
-	jr Monitor
-	promptstr: defm "> \0"
+	call		MonitorHandleLine
+	jr		Monitor
+promptstr:
+	defm "> \0"
 
 MonitorHandleLine:
 	ld		hl, linebuf	
