@@ -43,7 +43,7 @@ Monitor:
 	call		MonitorHandleLine
 	jr		Monitor
 promptstr:
-	defm "> \0"
+	defm		"> \0"
 
 MonitorHandleLine:
 	ld		hl, linebuf	
@@ -104,6 +104,7 @@ instr:		defm "IN\0"
 helpstr:	defm "HELP\0"
 jumpstr:	defm "JUMP\0"
 memcpystr:	defm "MEMCPY\0"
+memedstr:	defm "MEMED\0"
 outstr:		defm "OUT\0"
 peekstr:	defm "PEEK\0"
 pokestr:	defm "POKE\0"
@@ -121,6 +122,7 @@ dispatch_table:
 	defw helpstr, Help
 	defw jumpstr, Jump
 	defw memcpystr, Memcpy
+	defw memedstr, Memed
 	defw outstr, Out
 	defw peekstr, Peek
 	defw pokestr, Poke
@@ -511,6 +513,55 @@ Memcpy00:
 	
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+Memed:
+	ld		a, (argc)
+	cp		1
+	jr		z, Memed00
+	ld		hl, MemedArgcErrStr
+	call		PrintStringA
+	ret
+MemedArgcErrStr:
+	defm		"MEMED expects exactly one args (a 4 digit hex addresses\r\n\0"
+Memed00:
+	; Validate, parse and push destination
+	ld		hl, (argv)
+	call		ValidateAddress
+	ret		nz
+	call		Read16bit
+	ld		d, b
+	ld		e, c
+Memed01:
+	ld		hl, linebuf
+	ld		a, d
+	call		StrfHex
+	ld		a, e
+	call		StrfHex
+	ld		(hl), " "
+	inc		hl
+	ld		a, (de)
+	call		StrfHex
+	ld		(hl), " "
+	inc		hl
+	ld		(hl), "\0"
+	ld		hl, linebuf
+	call		PrintStringA
+	call		ReadLineA
+	ret		nz	; User hit Ctrl-C
+	ld		a, (hl)
+	cp		"\0"
+	jr		z, Memed02
+	call		ConvertToUpper	
+	call		ValidateValue
+	jr		nz, Memed01
+	push		de
+	call		Read8bit
+	pop		de
+	ld		(de), a
+Memed02:
+	inc		de
+	jr		Memed01
+	
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Out:
 	ld		a, (argc)
 	cp		2
