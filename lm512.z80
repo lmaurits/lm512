@@ -407,6 +407,7 @@ Dump01:
 	call		Read16bit	; Read address into BC
 	ld		d, b
 	ld		e, c
+DumpPreOuter:
 	ld		b, 16
 	push		bc
 DumpOuter:
@@ -438,9 +439,26 @@ Dump03:
 	dec		b
 	ld		a, b
 	cp		0
-	ret		z
+	jr		z, Dump04
 	push		bc
 	jr		DumpOuter
+Dump04:
+	ld		hl, DumpContinueStr
+	call		PrintStringA
+	call		ReadA
+	push		af
+	call		ClearLeft
+	ld		a, "\r"
+	call		WriteA
+	pop		af
+	cp		" "
+	jr		z, DumpPreOuter
+	cp		0x03	
+	ret		z
+	jr		Dump04
+	
+DumpContinueStr:
+	defm		"(press SPACE to continue, Ctrl-C to end)\0"
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
