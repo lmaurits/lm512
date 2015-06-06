@@ -362,7 +362,73 @@ ValidateDateStringErr:
 	ret
 ValidateDateStringErrStr:
 	defm		"Date setting requires a 12 digit decimal string in YYMMDDHHmmSS format\r\n\0"
-	
+SetTimeFromString:
+	call		ReadBCDByte
+	res		7, a			; Strip 7th bit
+	push		af
+	call		ReadBCDByte
+	res		7, a
+	push		af
+	call		ReadBCDByte
+	res		7, a
+	ld		e, a
+	call		ReadBCDByte
+	res		7, a
+	ld		d, a
+	call		ReadBCDByte
+	res		7, a
+	ld		c, a
+	call		ReadBCDByte
+	res		7, a
+	ld		b, a
+	pop		af
+	ld		l, a
+	pop		af
+	ld		h, a
+	call		RTC_WRITE
+	ret
+
+BuildTimeStr:
+	push		hl
+	call		RTC_READ
+	pop		hl
+	push		bc
+	ld		a, d
+	call WriteComponent
+	ld (hl), ":"
+	inc hl
+	ld		a, c
+	call WriteComponent
+	ld (hl), ":"
+	inc hl
+	pop 		bc
+	ld		a, b
+	call WriteComponent
+	ld (hl), "\n"
+	inc hl
+	ld (hl), "\r"
+	inc hl
+	ld (hl), "\0"
+	inc hl
+	ret
+
+WriteComponent:
+	ld b, a			; Copy
+	srl a			; Shift down 10 digi
+	srl a
+	srl a
+	srl a
+	and 00000111b		; Mask off AM/PM
+	add a, 48			; Convert to  ASCII
+	ld (hl), a
+	inc hl
+	ld a, b
+	and 00001111b
+	add a, 48	; ASCII
+	ld (hl), a
+	inc hl
+	ret
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 Dump:

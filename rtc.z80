@@ -27,63 +27,36 @@ UnsetUpdateInhibit:
 	out (.CTRL), a
 	ret
 
-SetTimeFromString:
+SetRTC:
 	call		SetUpdateInhibit
-	call		ReadBCDByte
-	res		7, a			; Strip 7th bit
-	out		(.YR), a
-	call		ReadBCDByte
-	res		7, a			; Strip 7th bit
-	out		(.MTH), a
-	call		ReadBCDByte
-	res		7, a			; Strip 7th bit
-	out		(.DAY), a
-	call		ReadBCDByte
-	res		7, a			; Strip 7th bit
-	out		(.HR), a
-	call		ReadBCDByte
-	res		7, a			; Strip 7th bit
-	out		(.MIN), a
-	call		ReadBCDByte
-	res		7, a			; Strip 7th bit
+	ld		a, b
 	out		(.SEC), a
-	call UnsetUpdateInhibit
+	ld		a, c
+	out		(.MIN), a
+	ld		a, d
+	out		(.HR), a
+	ld		a, e
+	out		(.DAY), a
+	ld		a, h
+	out		(.MTH), a
+	ld		a, l
+	out		(.YR), a
+	call		UnsetUpdateInhibit
 	ret
 
-BuildTimeStr:
-	call SetUpdateInhibit
-	in a, (.HR)	; Read hours
-	call WriteComponent
-	ld (hl), ":"
-	inc hl
-	in a, (.MIN)	; Read minutes
-	call WriteComponent
-	ld (hl), ":"
-	inc hl
-	in a, (.SEC)	; Read seconds
-	call WriteComponent
-	call UnsetUpdateInhibit
-	ld (hl), "\n"
-	inc hl
-	ld (hl), "\r"
-	inc hl
-	ld (hl), "\0"
-	inc hl
-	ret
-
-WriteComponent:
-	ld b, a			; Copy
-	srl a			; Shift down 10 digi
-	srl a
-	srl a
-	srl a
-	and 00000111b		; Mask off AM/PM
-	add a, 48			; Convert to  ASCII
-	ld (hl), a
-	inc hl
-	ld a, b
-	and 00001111b
-	add a, 48	; ASCII
-	ld (hl), a
-	inc hl
+GetRTC:
+	call		SetUpdateInhibit
+	in		a, (.SEC)	; Read seconds
+	ld		b, a
+	in		a, (.MIN)	; Read minutes
+	ld		c, a
+	in		a, (.HR)	; Read hours
+	ld		d, a
+	in		a, (.DAY)	; Read day
+	ld		e, a
+	in		a, (.MTH)	; Read month
+	ld		h, a
+	in		a, (.YR)	; Read year
+	ld		l, a
+	call		UnsetUpdateInhibit
 	ret

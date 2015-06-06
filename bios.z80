@@ -17,6 +17,10 @@ defb 0x00
 SERIAL_READ_B:		jp ReadB
 defb 0x00
 SERIAL_WRITE_B:		jp WriteB
+defb 0x00
+RTC_READ:		jp GetRTC
+defb 0x00
+RTC_WRITE:		jp SetRTC
 
 ; Main BIOS entry point
 Main:
