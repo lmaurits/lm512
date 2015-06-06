@@ -1,0 +1,37 @@
+; Definitional includes
+include 'memmap.z80'
+include 'iomap.z80'
+
+	org		ROMBASE
+	ld		sp, SYSSTACK
+	jp		Main
+
+defs 2, 0x00	; Align BIOS table 8 bytes into ROMBASE
+
+; BIOS call table
+
+SERIAL_READ_A:		jp ReadA
+defb 0x00
+SERIAL_WRITE_A:		jp WriteA
+defb 0x00
+SERIAL_READ_B:		jp ReadB
+defb 0x00
+SERIAL_WRITE_B:		jp WriteB
+
+; Main BIOS entry point
+Main:
+	; Initialise hardware
+	call UartInit
+
+	; Print welcome message
+	ld hl, welcomestr
+	call PrintStringA
+	jp Monitor
+	welcomestr: defm "Welcome to LM-512 microcomputer system.\n\r\0"
+
+; Code generating includes
+;include 'debug.z80'
+include 'uart.z80'
+include 'cf.z80'
+include 'rtc.z80'
+

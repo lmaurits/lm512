@@ -24,7 +24,7 @@ PrintStringA:
 	ld		a, (hl)
 	cp		"\0"
 	ret		z
-	call		WriteA
+	call		SERIAL_WRITE_A
 	inc		hl
 	jr		PrintStringA
 
@@ -32,8 +32,8 @@ ReadLineA:
 	push		hl
 	ld		b, 0
 ReadLineA00:
-	call		ReadA
-	call		WriteA
+	call		SERIAL_READ_A
+	call		SERIAL_WRITE_A
 	ld		(hl), a
 	inc		hl
 	inc		b
@@ -45,7 +45,7 @@ ReadLineA00:
 ReadLineA01:
 	; Handle Enter
 	ld		a, "\n"
-	call		WriteA
+	call		SERIAL_WRITE_A
 	dec		hl
 	ld		(hl), "\0"
 	pop		hl
@@ -54,9 +54,9 @@ ReadLineA01:
 ReadLineA02:
 	; Handle Ctrl-C
 	ld		a, "\r"
-	call		WriteA
+	call		SERIAL_WRITE_A
 	ld		a, "\n"
-	call		WriteA
+	call		SERIAL_WRITE_A
 	dec		hl
 	ld		(hl), "\0"
 	pop		hl
