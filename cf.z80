@@ -24,6 +24,45 @@ CfSetup:
 	out		(.CMD), a
 	call		WaitBusy
 	ret
+
+CfReadSectors:
+	push		af		; Save sector count
+	call		SetSectorCount
+	call		SetLBA
+	call		SendReadCommand
+	pop		af		; Restore sector count
+CfReadLoop:
+	ld		b, a	
+	call		WaitBusyData
+	ld		a, b
+	ld		c, .DATA	; port address
+	ld		b, 0		; read 256 bytes at a time
+	inir				; Read first half of sector
+	inir				; Read second half of sector
+	dec		a		; Count off this sector
+	cp		0
+	jr		nz, CfReadLoop
+	ret
+
+CfWriteSectors:
+	push		af		; Save sector count
+	call		SetSectorCount
+	call		SetLBA
+	call		SendWriteCommand
+	pop		af		; Restore sector count
+CfWriteLoop:
+	ld		b, a	
+	call		WaitBusyData
+	ld		a, b	
+	ld		c, .DATA	; port address
+	ld		b, 0		; read 256 bytes at a time
+	otir				; Write first half of sector
+	otir				; Write second half of sector
+	dec		a		; Count off this sector
+	cp		0
+	jr		nz, CfWriteLoop
+	ret
+
 SetLBA:
 	; Set up LBA address for start of disk
 	; Addresses 0, 1, 2 are in regs B, C, D and E
@@ -66,7 +105,7 @@ SendWriteCommand:
 	call		WaitBusyData	; Wait until data is ready to be read
 	in		a, (.STAT)		; Read status
 	and		%00000001		; mask off error bit
-	jp		nz, SendReadCommand	; Try again if error
+	jp		nz, SendWriteCommand	; Try again if error
 	ret
 WaitBusy:
 	in		a, (.STAT)		; Read status

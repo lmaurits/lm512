@@ -6,8 +6,10 @@ include 'string.z80'
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-; Infinite loop of read, parse, dispatch
 Monitor:
+	call		CfSetup
+MonitorLoop:
+; Infinite loop of read, parse, dispatch
 	ld		hl, promptstr
 	call		PrintStringA
 	ld		hl, linebuf
@@ -18,7 +20,7 @@ Monitor:
 	cp		"\0"
 	jr		z, Monitor
 	call		MonitorHandleLine
-	jr		Monitor
+	jr		MonitorLoop
 promptstr:
 	defm		"> \0"
 
@@ -177,23 +179,17 @@ BazStr: defm		"Baz\r\n\0"
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 CfBoot:
-	; Read first sector to disk buffer
-	call		CfSetup
+	; Set LBA address to start of disk
 	ld		b, 0
 	ld		c, 0
 	ld		d, 0
 	ld		e, 0
-	call		SetLBA
+	; Read one sector
 	ld		a, 1
-	call		SetSectorCount
-	call		SendReadCommand
-	call		WaitBusyData
-	; Transfer disk buffer to RAM
+	; Load to start of RAM
 	ld		hl, RAMBASE
-	ld		c, 32	; port address
-	ld		b, 0	; read 256 bytes
-	inir
-	inir			; read second half of sector
+	; Do Cf transfer
+	call		CF_READ
 	; Execute
 	jp		RAMBASE
 	
@@ -212,51 +208,33 @@ CfLoad00:
 	ld		hl, (argv)
 	call		ValidateAddress
 	ret		nz
-	; Convert and stash address
-	call		Read16bit
-	push		bc
-	; Validate sector
+	; Validate LBA
 	ld		hl, (argv+2)
 	call		ValidateSector
-	jr		z, CfLoad01
-	pop		bc	; Get rid of previous stacked BC before ret
-	ret
-CfLoad01:
 	ret		nz
-	call		CfSetup
+	; Validate sector count
+	ld		hl, (argv+4)
+	call		ValidateValue
+	ret		nz
+	; Parse address
+	ld		hl, (argv)
+	call		Read16bit
+	push		bc
+	; Parse LBA
+	ld		hl, (argv+2)
 	call		Read16bit
 	push		bc
 	call		Read16bit
-	pop		de
-	call		SetLBA
-	; Validate value
+	push		bc
+	; Parse sector count
 	ld		hl, (argv+4)
-	call		ValidateValue
-	jr		z, CfLoad02
-	pop		bc
-	ret
-CfLoad02:
-	; Convert and stash value
 	call		Read8bit
-	push		af
-	; Set sector count
-	call		SetSectorCount
-	; Read to CF's buffer
-	call		SendReadCommand
-	; Retreive loading address
-	pop		af	; sector count in a
-	pop		hl	; start address
-CfLoad03:
-	ld		b, a
-	call		WaitBusyData
-	ld		a, b
-	ld		c, 32	; port address
-	ld		b, 0	; read 256 bytes
-	inir
-	inir			; read second half of sector
-	dec		a
-	cp		0
-	jr		nz, CfLoad03
+	; Put everything in appropriate registers
+	pop		bc
+	pop		de
+	pop		hl
+	; Do it
+	call		CF_READ
 	ret
 CfLoadErrorStr:
 	defm		"CFLOAD expects exactly three args (A 4 digit hex destination address, a 6 digit hex start sector and a 2 digit hex sector count)\r\n\0"
@@ -276,51 +254,36 @@ CfSave00:
 	ld		hl, (argv)
 	call		ValidateSector
 	ret		nz
-	call		CfSetup
-	call		Read16bit
-	push		bc
-	call		Read16bit
-	pop		de
-	call		SetLBA
 	; Validate address
 	ld		hl, (argv+2)
 	call		ValidateAddress
 	ret		nz
-	; Convert and stash address
-	call		Read16bit
-	push		bc
 	; Validate value
 	ld		hl, (argv+4)
 	call		ValidateValue
-	jr		z, CfSave01
-	pop		bc	; Get rid of stacked bc before ret
-	ret
-CfSave01:
-	; Convert and stash value
+	ret		nz
+	; Parse LBA
+	ld		hl, (argv)
+	call		Read16bit
+	push		bc
+	call		Read16bit
+	push		bc
+	; Parse mem address
+	ld		hl, (argv+2)
+	call		Read16bit
+	push		bc
+	; Parse sector count
+	ld		hl, (argv+4)
 	call		Read8bit
-	push		af
-	; Set sector count
-	call		SetSectorCount
-	; Tell drive we want to write
-	call		SendWriteCommand
-	; Retreive loading address
-	pop		af	; sector count in a
-	pop		hl	; start address in hl
-CfSave02:
-	ld		b, a
-	call		WaitBusyData
-	ld		a, b
-	ld		c, 32	; port address
-	ld		b, 0	; read 256 bytes
-	otir
-	otir			; read second half of sector
-	dec		a
-	cp		0
-	jr		nz, CfSave02
+	; Put everything in appropriate registers
+	pop		hl
+	pop		bc
+	pop		de
+	; Do it
+	call		CF_WRITE
 	ret
 CfSaveErrorStr:
 	defm		"CFSAVE expects exactly three args (a 6 digit hex start sector, a 4 digit start address and a 2 digit hex sector count)\r\n\0"
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

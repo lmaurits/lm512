@@ -21,6 +21,10 @@ defb 0x00
 RTC_READ:		jp GetRTC
 defb 0x00
 RTC_WRITE:		jp SetRTC
+defb 0x00
+CF_READ:		jp CfReadSectors
+defb 0x00
+CF_WRITE:		jp CfWriteSectors
 
 ; Main BIOS entry point
 Main:
