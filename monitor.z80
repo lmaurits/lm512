@@ -7,7 +7,14 @@ include 'string.z80'
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 Monitor:
-	call		CfSetup
+
+	; Print welcome message
+	ld hl, welcomestr
+	call PrintStringA
+	; Start processing commands
+	jp MonitorLoop
+	welcomestr: defm "Welcome to LM-512 microcomputer system.\n\r\0"
+
 MonitorLoop:
 ; Infinite loop of read, parse, dispatch
 	ld		hl, promptstr

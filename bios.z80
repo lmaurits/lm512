@@ -29,13 +29,12 @@ CF_WRITE:		jp CfWriteSectors
 ; Main BIOS entry point
 Main:
 	; Initialise hardware
-	call UartInit
-
-	; Print welcome message
-	ld hl, welcomestr
-	call PrintStringA
-	jp Monitor
-	welcomestr: defm "Welcome to LM-512 microcomputer system.\n\r\0"
+	call		UartInit
+	call		CfSetup
+	; Start monitor
+	call		Monitor
+	; Loop
+	jp Main
 
 ; Code generating includes
 ;include 'debug.z80'
