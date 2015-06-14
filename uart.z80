@@ -30,41 +30,101 @@
 .STOP:		equ DUARTBASE + 0x0F	; Stop Counter Command (R)
 .RSTOP:		equ DUARTBASE + 0x0F	; Reset Output Port Bits Command (W)
 
-UartInit:
-	; Set mode register value
-	ld a, 00010011b
-	out (.MRA), a
-	out (.MRB), a
-	ld a, 00000111b
-	out (.MRA), a
-	out (.MRB), a
-	; Set baud rates
-	ld a, 10111011b
-	out (.CSRA), a
-	out (.CSRB), a
-	; Send enable RX/TX command
-	ld a, 00000101b
-	out (.CRA), a
-	out (.CRB), a
-	ret
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; PUBLIC
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-WaitToReadA:
-	in a, (.SRA)		; Read status reg
-	and 00000001b		; Mask off receive ready
-	xor 00000001b		; Compare receive ready to 1
-	jr nz, WaitToReadA	; Read status again if not ready
+UartInitA:
+	; Initialise channel A of UART according to value of A
+	; A1,A0    -  00: 5 bits per char
+	;             01: 6 bits per char
+	;             10: 7 bits per char
+	;             11: 8 bits per char
+	; A2       -   0: 1 stop char
+	;              1: 2 stop chars
+	; A4,A3    -  00: no parityar
+	;             01: odd parity
+	;             10: no parity
+	;             11: even parity
+	; A7,A6,A5 - 000: 600 baud
+	;            001: 1.2k baud
+	;            010: 2.4k baud
+	;            011: 4.8k baud
+	;            100: 7.2k baud
+	;            101: 9.6k baud
+	;            110: 19.2k baud
+	;            111: 38.4k baud
+	ld	b, a
+	; Disable transmitter and receiver
+	ld	a, 00001010b
+	out	(.CRA), a
+	; STEP 1, set bits per char and parity
+	; Derive a byte from A:
+	; 00 00 00 00 A4 A3 A1 A0
+	ld	a, b
+	and	00011000b
+	srl	a
+	ld	d, a
+	ld	a, b
+	and	00000011b
+	or	d
+	; Use this byte to read MR1 from table
+	ld	hl, MR1TABLE
+	ld	d, 0x00
+	ld	e, a
+	add	hl, de
+	ld	a, (hl)
+	out	(.MRA), a
+	; STEP 2, set stop characters
+	; Derive a byte from A:
+	; 00 00 00 00 00 00 00 A2
+	ld	a, b
+	and	00000100
+	srl	a
+	srl	a
+	; Use this byte to read MR2 from table
+	ld	hl, MR2TABLE
+	ld	d, 0x00
+	ld	e, a
+	add	hl, de
+	ld	a, (hl)
+	out	(.MRA), a
+	; STEP 3, set baud
+	; Derive a byte from A:
+	; 00 00 00 00 00 A7 A6 A5
+	ld	a, b
+	srl	a
+	srl	a
+	srl	a
+	srl	a
+	srl	a
+	; First use this byte to set ACR 
+	ld	d, a
+	cp	00000110b
+	jr	z, UartInitA_ACR_1
+	ld	a, 00110000b
+	jr	UartInitA_ACR_set
+UartInitA_ACR_1:
+	ld	a, 10110000b
+UartInitA_ACR_set:
+	out	(.ACR), a
+	ld	a, d
+UartInitA_CSR:
+	; Use this byte to read CSR from table
+	ld	hl, CSRTABLE
+	ld	d, 0x00
+	ld	e, a
+	add	hl, de
+	ld	a, (hl)
+	out	(.CSRA), a
+	; Enable transmitter and receiver
+	ld	a, 00000101b
+	out	(.CRA), a
 	ret
 
 ReadA:
 	call WaitToReadA
 	in a, (.RHRA)
-	ret
-
-WaitToWriteA:
-	in a, (.SRA)		; Read status reg
-	and 00000100b		; Mask off receive ready
-	xor 00000100b		; Compare receive ready to 1
-	jr nz, WaitToWriteA	; Read status again if not ready
 	ret
 
 WriteA:
@@ -74,16 +134,41 @@ WriteA:
 	out (.THRA), a
 	ret
 
+ReadB:
+	call WaitToReadB
+	in a, (.RHRB)
+	ret
+
+WriteB:
+	ld b, a
+	call WaitToWriteB
+	ld a, b
+	out (.THRB), a
+	ret
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; PRIVATE
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+WaitToReadA:
+	in a, (.SRA)		; Read status reg
+	and 00000001b		; Mask off receive ready
+	xor 00000001b		; Compare receive ready to 1
+	jr nz, WaitToReadA	; Read status again if not ready
+	ret
+
+WaitToWriteA:
+	in a, (.SRA)		; Read status reg
+	and 00000100b		; Mask off receive ready
+	xor 00000100b		; Compare receive ready to 1
+	jr nz, WaitToWriteA	; Read status again if not ready
+	ret
+
 WaitToReadB:
 	in a, (.SRB)		; Read status reg
 	and 00000001b		; Mask off receive ready
 	xor 00000001b		; Compare receive ready to 1
 	jr nz, WaitToReadB	; Read status again if not ready
-	ret
-
-ReadB:
-	call WaitToReadB
-	in a, (.RHRB)
 	ret
 
 WaitToWriteB:
@@ -93,9 +178,34 @@ WaitToWriteB:
 	jr nz, WaitToWriteB	; Read status again if not ready
 	ret
 
-WriteB:
-	ld b, a
-	call WaitToWriteB
-	ld a, b
-	out (.THRB), a
-	ret
+MR1TABLE:
+	defb	00010000b
+	defb	00010001b
+	defb	00010010b
+	defb	00010011b
+	defb	00000100b
+	defb	00000101b
+	defb	00000110b
+	defb	00000111b
+	defb	00010000b
+	defb	00010001b
+	defb	00010010b
+	defb	00010011b
+	defb	00000000b
+	defb	00000001b
+	defb	00000010b
+	defb	00000011b
+
+MR2TABLE:
+	defb	00000111b
+	defb	00001111b
+
+CSRTABLE:
+	defb	01010101b
+	defb	01100110b
+	defb	10001000b
+	defb	10011001b
+	defb	10101010b
+	defb	10111011b
+	defb	11001100b
+	defb	11001100b

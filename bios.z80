@@ -24,6 +24,8 @@ defb 0x00
 CF_READ:		jp CfReadSectors
 defb 0x00
 CF_WRITE:		jp CfWriteSectors
+defb 0x00
+SERIAL_INIT_A:		jp UartInitA
 
 ; Code generating includes
 ;include 'debug.z80'
@@ -43,3 +45,8 @@ MainLoop:
 	call		Monitor
 	; Loop
 	jp MainLoop
+
+UartInit:
+	ld		a, 10100011b
+	call		SERIAL_INIT_A
+	ret
