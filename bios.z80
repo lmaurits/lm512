@@ -2,11 +2,10 @@
 include 'memmap.z80'
 include 'iomap.z80'
 
-	org		ROMBASE
-	ld		sp, SYSSTACK
-	jp		Main
+org		ROMBASE
+jp		Main
 
-defs 2, 0x00	; Align BIOS table 8 bytes into ROMBASE
+defs 5, 0x00	; Align BIOS table 4 bytes into ROMBASE
 
 ; BIOS call table
 
@@ -26,19 +25,21 @@ CF_READ:		jp CfReadSectors
 defb 0x00
 CF_WRITE:		jp CfWriteSectors
 
-; Main BIOS entry point
-Main:
-	; Initialise hardware
-	call		UartInit
-	call		CfSetup
-	; Start monitor
-	call		Monitor
-	; Loop
-	jp Main
-
 ; Code generating includes
 ;include 'debug.z80'
 include 'uart.z80'
 include 'cf.z80'
 include 'rtc.z80'
 
+
+; Main BIOS entry point
+Main:
+	ld		sp, SYSSTACK
+	; Initialise hardware
+	call		UartInit
+	call		CfSetup
+MainLoop:
+	; Start monitor
+	call		Monitor
+	; Loop
+	jp MainLoop
