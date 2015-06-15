@@ -58,6 +58,44 @@ UartInitA:
 	; Disable transmitter and receiver
 	ld	a, 00001010b
 	out	(.CRA), a
+	; Set MR1 and MR2 registers on UART
+	ld	c, .MRA
+	call	UartInitMR1
+	call	UartInitMR2
+	; Set ACR register on UART
+	ld	c, .ACR
+	call	UartInitACR
+	; Set CSR register on UART
+	ld	c, .CSRA
+	call	UartInitCSR
+	; Enable transmitter and receiver
+	ld	a, 00000101b
+	out	(.CRA), a
+	ret
+
+UartInitB:
+	; Initialise channel B of UART according to value of A
+	; Mapping from a to settings as per UartInitA
+	ld	b, a
+	; Disable transmitter and receiver
+	ld	a, 00001010b
+	out	(.CRB), a
+	; Set MR1 and MR2 registers on UART
+	ld	c, .MRB
+	call	UartInitMR1
+	call	UartInitMR2
+	; Set ACR register on UART
+	ld	c, .ACR
+	call	UartInitACR
+	; Set CSR register on UART
+	ld	c, .CSRB
+	call	UartInitCSR
+	; Enable transmitter and receiver
+	ld	a, 00000101b
+	out	(.CRB), a
+	ret
+
+UartInitMR1:
 	; STEP 1, set bits per char and parity
 	; Derive a byte from A:
 	; 00 00 00 00 A4 A3 A1 A0
@@ -74,7 +112,10 @@ UartInitA:
 	ld	e, a
 	add	hl, de
 	ld	a, (hl)
-	out	(.MRA), a
+	out	(c), a
+	ret
+
+UartInitMR2:
 	; STEP 2, set stop characters
 	; Derive a byte from A:
 	; 00 00 00 00 00 00 00 A2
@@ -88,7 +129,10 @@ UartInitA:
 	ld	e, a
 	add	hl, de
 	ld	a, (hl)
-	out	(.MRA), a
+	out	(c), a
+	ret
+
+UartInitACR:
 	; STEP 3, set baud
 	; Derive a byte from A:
 	; 00 00 00 00 00 A7 A6 A5
@@ -98,28 +142,32 @@ UartInitA:
 	srl	a
 	srl	a
 	srl	a
-	; First use this byte to set ACR 
-	ld	d, a
+	; Save this derived byte in B.
+	; Note that this overrides the user-provided value of A
+	; which is an input to the UartInitA or UartInitB function
+	; which is calling *this* function.  This saved byte in B
+	; will later be used by UartInitCSR.  I'm documenting this
+	; because if I ever try to use the UartInit* sub-functions
+	; independent of UartInitA or UartInitB, this will be confusing.
+	ld	b, a
 	cp	00000110b
-	jr	z, UartInitA_ACR_1
+	jr	z, UartInitACR_1
 	ld	a, 00110000b
-	jr	UartInitA_ACR_set
-UartInitA_ACR_1:
+	jr	UartInitACR_set
+UartInitACR_1:
 	ld	a, 10110000b
-UartInitA_ACR_set:
-	out	(.ACR), a
-	ld	a, d
-UartInitA_CSR:
+UartInitACR_set:
+	out	(c), a
+	ret
+
+UartInitCSR:
 	; Use this byte to read CSR from table
 	ld	hl, CSRTABLE
 	ld	d, 0x00
-	ld	e, a
+	ld	e, b
 	add	hl, de
 	ld	a, (hl)
-	out	(.CSRA), a
-	; Enable transmitter and receiver
-	ld	a, 00000101b
-	out	(.CRA), a
+	out	(c), a
 	ret
 
 ReadA:
