@@ -1,3 +1,4 @@
+MMUBASE:	equ 0x00
 CFBASE:		equ 0x20
 DUARTBASE:	equ 0x40
 RTCBASE:	equ 0x60

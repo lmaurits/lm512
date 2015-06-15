@@ -28,9 +28,12 @@ defb 0x00
 SERIAL_INIT_A:		jp UartInitA
 defb 0x00
 SERIAL_INIT_B:		jp UartInitB
+defb 0x00
+BANK:			jp SetMemBank
 
 ; Code generating includes
 ;include 'debug.z80'
+include 'mmu.z80'
 include 'uart.z80'
 include 'cf.z80'
 include 'rtc.z80'
