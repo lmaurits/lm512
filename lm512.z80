@@ -1,2 +1,3 @@
 include 'bios.z80'
+include 'cli.z80'
 include 'monitor.z80'

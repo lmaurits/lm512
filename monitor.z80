@@ -1,5 +1,3 @@
-include 'string.z80'
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
 ; MONITOR COMMAND LINE INTERFACE
@@ -34,44 +32,11 @@ promptstr:
 MonitorHandleLine:
 	ld		hl, linebuf	
 	call		ConvertToUpper
+	ld		bc, argc
 	call		ParseLine
+	ld		bc, dispatch_table
 	call		Dispatch
 	ret
-
-ParseLine:
-	; Prepare to read arguments
-	; Set argc to 0
-	ld		a, 0
-	ld		(argc), a
-	; Set argv_index to argv
-	ld		hl, argv_index
-	ld		de, argv
-	ld		(hl), e
-	inc		hl
-	ld		(hl), d
-	; Read command name
-	ld		hl, linebuf
-	call StrTok
-ParseLine00:
-	; If string ended in a null, we're done
-	cp		"\0"
-	ret		z
-	; Put HL into argv and increment argv_index
-	ld		hl, (argv_index)
-	ld		(hl), e
-	inc		hl
-	ld		(hl), d
-	inc		hl
-	ld		(argv_index), hl
-	; Increment argc
-	ld		a, (argc)
-	inc		a
-	ld		(argc), a
-	; Prepare for next StrTok...
-	ld		h, d
-	ld		l, e
-	call		StrTok
-	jr		ParseLine00
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
@@ -116,44 +81,6 @@ dispatch_table:
 	defw pokestr, Poke
 	defw serloadstr, SerialLoad
 	defw nullstr, What
-
-; Function which interprets the string pointed to by HL
-; as a command and calls the appropriate function
-Dispatch:
-	ld		hl, dispatch_table
-	ld		(dispatch_index), hl
-Dispatch00:
-	ld		a, (hl)			; read first byte of string add into a
-	ld		e, a			; stick it in e
-	inc		hl			; advance
-	ld		a, (hl)			; read second byte
-	ld		d, a			; stick it in d
-
-	ld		h, d
-	ld		l, e
-
-	ld		hl, linebuf		; point HL at start of command
-	call		StrCmp
-	jr		z, Dispatch01		; We've matched!
-	ld		hl, (dispatch_index)	; put index address in HL
-	inc		hl	
-	inc		hl	
-	inc		hl	
-	inc		hl	
-	ld		(dispatch_index), hl	
-	jr		Dispatch00
-Dispatch01:
-	ld		de, (dispatch_index)	
-	inc		de	
-	inc		de
-	ld		a, (de)
-	ld		l, a
-	inc		de
-	ld		a, (de)
-	ld		h, a
-	jp		(hl)
-
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
@@ -792,60 +719,3 @@ What:
 	call PrintStringA
 	ret
 	whatstr: defm "What?\n\r\0"
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;
-; UTILITY FUNCTIONS
-;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-ValidateValue:
-	call		StrLen
-	cp		2
-	jr		nz, ValidateValueError
-	call		IsStrHex
-	jr		nz, ValidateValueError
-	cp		a	; Set zero flag
-	ret
-ValidateValueError:
-	call		PrintStringA
-	ld		hl, ValueErrorStr
-	call		PrintStringA
-	or		1	; Reset zero flag
-	ret
-ValueErrorStr:
-	defm		" is not a valid value.  Use 2 digit hex, 00 to FF.\r\n\0"
-
-ValidateAddress:
-	call		StrLen
-	cp		4
-	jr		nz, ValidateAddressError
-	call		IsStrHex
-	jr		nz, ValidateAddressError
-	cp		a	; Set zero flag
-	ret
-ValidateAddressError:
-	call		PrintStringA
-	ld		hl, AddressErrorStr
-	call		PrintStringA
-	or		1	; Reset zero flag
-	ret
-AddressErrorStr:
-	defm		" is not a valid address.  Use 4 digit hex, 0000 to FFFF.\r\n\0"
-
-ValidateSector:
-	call		StrLen
-	cp		8
-	jr		nz, ValidateSectorError
-	call		IsStrHex
-	jr		nz, ValidateSectorError
-	cp		a	; Set zero flag
-	ret
-ValidateSectorError:
-	call		PrintStringA
-	ld		hl, SectorErrorStr
-	call		PrintStringA
-	or		1	; Reset zero flag
-	ret
-SectorErrorStr:
-	defm		" is not a valid sector.  Use 8 digit hex, 00000000 to 100000.\r\n\0"
