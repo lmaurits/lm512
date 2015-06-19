@@ -1,0 +1,273 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; DISK OPERATING SYSTEM
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+Dos:
+
+	; Print welcome message
+	ld hl, welcomestr
+	call PrintStringA
+	; Start processing commands
+	jp DosLoop
+	welcomestr: defm "Welcome to LM-512 microcomputer system.\n\r\0"
+
+DosLoop:
+; Infinite loop of read, parse, dispatch
+	ld		hl, dos_promptstr
+	call		PrintStringA
+	ld		hl, dos_linebuf
+	call		ReadLineA
+	jr		nz, Dos ; User stopped input using Ctrl-C
+	ld		hl, dos_linebuf
+	ld		a, (hl)
+	cp		"\0"
+	jr		z, Dos
+	call		DosHandleLine
+	jr		DosLoop
+dos_promptstr:
+	defm		"> \0"
+
+DosHandleLine:
+	ld		hl, dos_linebuf	
+	call		ConvertToUpper
+	ld		bc, dos_argc
+	call		ParseLine
+	ld		bc, dos_dispatch_table
+	call		Dispatch
+	ret
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; COMMAND DISPATCH
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; Command strings
+
+cfbootstr:	defm "CFBOOT\0"
+datestr:	defm "DATE\0"
+monstr:		defm "MONITOR\0"
+serloadstr:	defm "SERLOAD\0"
+
+; Table linking command strings to function entry points
+dos_dispatch_table:
+	defw cfbootstr, CfBoot
+	defw datestr, Date
+	defw helpstr, DosHelp
+	defw monstr, EnterMonitor
+	defw serloadstr, SerialLoad
+	defw nullstr, What
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; DOS COMMANDS
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+CfBoot:
+	; Set LBA address to start of disk
+	ld		b, 0
+	ld		c, 0
+	ld		d, 0
+	ld		e, 0
+	; Read one sector
+	ld		a, 1
+	; Load to start of RAM
+	ld		hl, RAMBASE
+	; Do Cf transfer
+	call		CF_READ
+	; Execute
+	jp		RAMBASE
+	
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+Date:
+	ld		a, (dos_argc)
+	cp		0
+	jr		z, DateGet
+	cp		1
+	jr		z, DateSet
+	ld		hl, DateArgcErrStr
+	call		PrintStringA
+	ret
+DateArgcErrStr:
+	defm		"Date expects zero arguments (to get) or one argument (to set, YYMMDDHHmmSS)\r\n\0"
+DateSet:
+	ld		hl, (dos_argv)
+	call		ValidateDateString
+	ret		nz
+	call		SetTimeFromString
+DateGet:
+	ld hl, dos_linebuf
+	call BuildTimeStr
+	ld hl, dos_linebuf
+	call PrintStringA
+	ret
+ValidateDateString:
+	call		StrLen
+	cp		12
+	jr		nz, ValidateDateStringErr
+	call		IsStrDec
+	jr		nz, ValidateDateStringErr
+ValidateDateStringOkay:
+	cp		a	; Set zero flag
+	ret
+ValidateDateStringErr:
+	ld		hl, ValidateDateStringErrStr
+	call		PrintStringA
+	or		1	; Reset zero flag
+	ret
+ValidateDateStringErrStr:
+	defm		"Date setting requires a 12 digit decimal string in YYMMDDHHmmSS format\r\n\0"
+SetTimeFromString:
+	call		ReadBCDByte
+	res		7, a			; Strip 7th bit
+	push		af
+	call		ReadBCDByte
+	res		7, a
+	push		af
+	call		ReadBCDByte
+	res		7, a
+	ld		e, a
+	call		ReadBCDByte
+	res		7, a
+	ld		d, a
+	call		ReadBCDByte
+	res		7, a
+	ld		c, a
+	call		ReadBCDByte
+	res		7, a
+	ld		b, a
+	pop		af
+	ld		l, a
+	pop		af
+	ld		h, a
+	call		RTC_WRITE
+	ret
+
+BuildTimeStr:
+	push		hl
+	call		RTC_READ
+	pop		hl
+	push		bc
+	ld		a, d
+	call WriteComponent
+	ld (hl), ":"
+	inc hl
+	ld		a, c
+	call WriteComponent
+	ld (hl), ":"
+	inc hl
+	pop 		bc
+	ld		a, b
+	call WriteComponent
+	ld (hl), "\n"
+	inc hl
+	ld (hl), "\r"
+	inc hl
+	ld (hl), "\0"
+	inc hl
+	ret
+
+WriteComponent:
+	ld b, a			; Copy
+	srl a			; Shift down 10 digi
+	srl a
+	srl a
+	srl a
+	and 00000111b		; Mask off AM/PM
+	add a, 48			; Convert to  ASCII
+	ld (hl), a
+	inc hl
+	ld a, b
+	and 00001111b
+	add a, 48	; ASCII
+	ld (hl), a
+	inc hl
+	ret
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+DosHelp:
+	ld hl, dos_helpmessage
+	call PrintStringA
+	ret
+	dos_helpmessage:	defm "LM-512 DOS commands:\n\r"
+	defm "CFBOOT: Read MBR from CF card to RAM and execute.\n\r"
+	defm "DATE: Print current date and time.\n\r"
+	defm "SERLOAD ADR: Read data from serial port 2 to address ADR.\n\r\0"
+	
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+EnterMonitor:
+	call Monitor
+	ret
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+proto_hello: equ $00
+proto_hello_ack: equ $0F
+proto_bytes: equ $F0
+proto_send:  equ $FF
+
+SerialLoad:
+	; Check dos_argc
+	ld		a, (dos_argc)
+	cp		1
+	jr		z, SerialLoad00
+	ld		hl, SerialLoadArgcErrorStr
+	call		PrintStringA
+	ret
+SerialLoadArgcErrorStr:
+	defm		"SERLOAD expects exactly one arg (4 digit hex address)\r\n\0"
+SerialLoad00:
+	; Validate address
+	ld		hl, (dos_argv)
+	call		ValidateAddress
+	ret		nz
+	; Parse address and store in HL
+	call		Read16bit
+	ld		h, b
+	ld		l, c
+	; Reset server
+	ld		a, proto_hello
+	call		SERIAL_WRITE_B
+	call		SERIAL_READ_B
+	cp		proto_hello_ack
+	jp		z, SerialLoad01
+SerialLoad01:
+transfer_outer_loop:
+	ld		a, proto_bytes
+	call		SERIAL_WRITE_B
+	call		SERIAL_READ_B
+	ld c, a
+	cp 0
+	ret		z
+	push		bc
+	ld		a, proto_send
+	call		SERIAL_WRITE_B
+transfer_inner_loop:
+	call		SERIAL_READ_B
+	ld		(hl), a
+	inc		hl
+	dec		c
+	ld		a, c
+	cp		0
+	jr		nz, transfer_inner_loop
+	pop		bc
+	push		hl
+	ld		a, c
+	ld		hl, dos_linebuf
+	call		StrfHex
+	ld		(hl), "\0"
+	ld		hl, dos_linebuf
+	call		PrintStringA
+	ld		hl, SerialLoadStr
+	call		PrintStringA
+	pop		hl
+	jr		transfer_outer_loop
+SerialLoadStr:
+	defm		" bytes transferred.\r\n\0"
+

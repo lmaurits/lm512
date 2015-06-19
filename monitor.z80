@@ -5,36 +5,28 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 Monitor:
-
-	; Print welcome message
-	ld hl, welcomestr
-	call PrintStringA
-	; Start processing commands
-	jp MonitorLoop
-	welcomestr: defm "Welcome to LM-512 microcomputer system.\n\r\0"
-
 MonitorLoop:
 ; Infinite loop of read, parse, dispatch
-	ld		hl, promptstr
+	ld		hl, monpromptstr
 	call		PrintStringA
-	ld		hl, linebuf
+	ld		hl, mon_linebuf
 	call		ReadLineA
 	jr		nz, Monitor ; User stopped input using Ctrl-C
-	ld		hl, linebuf
+	ld		hl, mon_linebuf
 	ld		a, (hl)
 	cp		"\0"
 	jr		z, Monitor
 	call		MonitorHandleLine
 	jr		MonitorLoop
-promptstr:
-	defm		"> \0"
+monpromptstr:
+	defm		"$ \0"
 
 MonitorHandleLine:
-	ld		hl, linebuf	
+	ld		hl, mon_linebuf	
 	call		ConvertToUpper
-	ld		bc, argc
+	ld		bc, mon_argc
 	call		ParseLine
-	ld		bc, dispatch_table
+	ld		bc, mondispatch_table
 	call		Dispatch
 	ret
 
@@ -46,11 +38,10 @@ MonitorHandleLine:
 
 ; Command strings
 
-cfbootstr:	defm "CFBOOT\0"
 cfloadstr:	defm "CFLOAD\0"
 cfsavestr:	defm "CFSAVE\0"
+continuestr:	defm "CONTINUE\0"
 bankstr:	defm "BANK\0"
-datestr:	defm "DATE\0"
 dumpstr:	defm "DUMP\0"
 instr:		defm "IN\0"
 helpstr:	defm "HELP\0"
@@ -58,18 +49,14 @@ jumpstr:	defm "JUMP\0"
 memcpystr:	defm "MEMCPY\0"
 memedstr:	defm "MEMED\0"
 outstr:		defm "OUT\0"
-peekstr:	defm "PEEK\0"
-pokestr:	defm "POKE\0"
-serloadstr:	defm "SERLOAD\0"
 nullstr:	defm "\0"
 
 ; Table linking command strings to function entry points
-dispatch_table:
-	defw cfbootstr, CfBoot
+mondispatch_table:
 	defw cfloadstr, CfLoad
 	defw cfsavestr, CfSave
+	defw continuestr, Continue
 	defw bankstr, Bank
-	defw datestr, Date
 	defw dumpstr, Dump
 	defw instr, In
 	defw helpstr, Help
@@ -77,9 +64,6 @@ dispatch_table:
 	defw memcpystr, Memcpy
 	defw memedstr, Memed
 	defw outstr, Out
-	defw peekstr, Peek
-	defw pokestr, Poke
-	defw serloadstr, SerialLoad
 	defw nullstr, What
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -89,7 +73,7 @@ dispatch_table:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 Bank:
-	ld		a, (argc)
+	ld		a, (mon_argc)
 	cp		1
 	jr		z, Bank00
 	ld		hl, BankErrStr
@@ -98,7 +82,7 @@ Bank:
 BankErrStr:
 	defm		"BANK expects exactly one arg (2 digit hex bank)\r\n\0"
 Bank00:
-	ld		hl, (argv)
+	ld		hl, (mon_argv)
 	call		ValidateValue
 	jr		z, Bank01
 	ret
@@ -112,26 +96,9 @@ BazStr: defm		"Baz\r\n\0"
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-CfBoot:
-	; Set LBA address to start of disk
-	ld		b, 0
-	ld		c, 0
-	ld		d, 0
-	ld		e, 0
-	; Read one sector
-	ld		a, 1
-	; Load to start of RAM
-	ld		hl, RAMBASE
-	; Do Cf transfer
-	call		CF_READ
-	; Execute
-	jp		RAMBASE
-	
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 CfLoad:
 	; Check argument count
-	ld		a, (argc)
+	ld		a, (mon_argc)
 	cp		3
 	jr		z, CfLoad00
 	ld		hl, CfLoadErrorStr
@@ -139,29 +106,29 @@ CfLoad:
 	ret
 CfLoad00:
 	; Validate address
-	ld		hl, (argv)
+	ld		hl, (mon_argv)
 	call		ValidateAddress
 	ret		nz
 	; Validate LBA
-	ld		hl, (argv+2)
+	ld		hl, (mon_argv+2)
 	call		ValidateSector
 	ret		nz
 	; Validate sector count
-	ld		hl, (argv+4)
+	ld		hl, (mon_argv+4)
 	call		ValidateValue
 	ret		nz
 	; Parse address
-	ld		hl, (argv)
+	ld		hl, (mon_argv)
 	call		Read16bit
 	push		bc
 	; Parse LBA
-	ld		hl, (argv+2)
+	ld		hl, (mon_argv+2)
 	call		Read16bit
 	push		bc
 	call		Read16bit
 	push		bc
 	; Parse sector count
-	ld		hl, (argv+4)
+	ld		hl, (mon_argv+4)
 	call		Read8bit
 	; Put everything in appropriate registers
 	pop		bc
@@ -177,7 +144,7 @@ CfLoadErrorStr:
 
 CfSave:
 	; Check argument count
-	ld		a, (argc)
+	ld		a, (mon_argc)
 	cp		3
 	jr		z, CfSave00
 	ld		hl, CfSaveErrorStr
@@ -185,29 +152,29 @@ CfSave:
 	ret
 CfSave00:
 	; Validate sector
-	ld		hl, (argv)
+	ld		hl, (mon_argv)
 	call		ValidateSector
 	ret		nz
 	; Validate address
-	ld		hl, (argv+2)
+	ld		hl, (mon_argv+2)
 	call		ValidateAddress
 	ret		nz
 	; Validate value
-	ld		hl, (argv+4)
+	ld		hl, (mon_argv+4)
 	call		ValidateValue
 	ret		nz
 	; Parse LBA
-	ld		hl, (argv)
+	ld		hl, (mon_argv)
 	call		Read16bit
 	push		bc
 	call		Read16bit
 	push		bc
 	; Parse mem address
-	ld		hl, (argv+2)
+	ld		hl, (mon_argv+2)
 	call		Read16bit
 	push		bc
 	; Parse sector count
-	ld		hl, (argv+4)
+	ld		hl, (mon_argv+4)
 	call		Read8bit
 	; Put everything in appropriate registers
 	pop		hl
@@ -221,116 +188,18 @@ CfSaveErrorStr:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-Date:
-	ld		a, (argc)
-	cp		0
-	jr		z, DateGet
-	cp		1
-	jr		z, DateSet
-	ld		hl, DateArgcErrStr
-	call		PrintStringA
-	ret
-DateArgcErrStr:
-	defm		"Date expects zero arguments (to get) or one argument (to set, YYMMDDHHmmSS)\r\n\0"
-DateSet:
-	ld		hl, (argv)
-	call		ValidateDateString
-	ret		nz
-	call		SetTimeFromString
-DateGet:
-	ld hl, linebuf
-	call BuildTimeStr
-	ld hl, linebuf
-	call PrintStringA
-	ret
-ValidateDateString:
-	call		StrLen
-	cp		12
-	jr		nz, ValidateDateStringErr
-	call		IsStrDec
-	jr		nz, ValidateDateStringErr
-ValidateDateStringOkay:
-	cp		a	; Set zero flag
-	ret
-ValidateDateStringErr:
-	ld		hl, ValidateDateStringErrStr
-	call		PrintStringA
-	or		1	; Reset zero flag
-	ret
-ValidateDateStringErrStr:
-	defm		"Date setting requires a 12 digit decimal string in YYMMDDHHmmSS format\r\n\0"
-SetTimeFromString:
-	call		ReadBCDByte
-	res		7, a			; Strip 7th bit
-	push		af
-	call		ReadBCDByte
-	res		7, a
-	push		af
-	call		ReadBCDByte
-	res		7, a
-	ld		e, a
-	call		ReadBCDByte
-	res		7, a
-	ld		d, a
-	call		ReadBCDByte
-	res		7, a
-	ld		c, a
-	call		ReadBCDByte
-	res		7, a
-	ld		b, a
-	pop		af
-	ld		l, a
-	pop		af
-	ld		h, a
-	call		RTC_WRITE
-	ret
-
-BuildTimeStr:
-	push		hl
-	call		RTC_READ
+Continue:
+	; Pop the return address which leads back to the monitor loop
 	pop		hl
-	push		bc
-	ld		a, d
-	call WriteComponent
-	ld (hl), ":"
-	inc hl
-	ld		a, c
-	call WriteComponent
-	ld (hl), ":"
-	inc hl
-	pop 		bc
-	ld		a, b
-	call WriteComponent
-	ld (hl), "\n"
-	inc hl
-	ld (hl), "\r"
-	inc hl
-	ld (hl), "\0"
-	inc hl
-	ret
-
-WriteComponent:
-	ld b, a			; Copy
-	srl a			; Shift down 10 digi
-	srl a
-	srl a
-	srl a
-	and 00000111b		; Mask off AM/PM
-	add a, 48			; Convert to  ASCII
-	ld (hl), a
-	inc hl
-	ld a, b
-	and 00001111b
-	add a, 48	; ASCII
-	ld (hl), a
-	inc hl
+	pop		hl
+	; Now return to wherever we were called from
 	ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 Dump:
 	; Check argument count
-	ld		a, (argc)
+	ld		a, (mon_argc)
 	cp		1
 	jr		z, Dump00
 	ld		hl, DumpArgcErrorStr
@@ -339,7 +208,7 @@ Dump:
 DumpArgcErrorStr:
 	defm		"DUMP expects exactly one arg (4 digit hex address)\r\n\0"
 Dump00:
-	ld		hl, (argv)
+	ld		hl, (mon_argv)
 	call		ValidateAddress
 	jr		z, Dump01
 	ret
@@ -351,7 +220,7 @@ DumpPreOuter:
 	ld		b, 16
 	push		bc
 DumpOuter:
-	ld		hl, linebuf
+	ld		hl, mon_linebuf
 	ld		b, 16
 DumpInner:
 	ld		a, d
@@ -373,7 +242,7 @@ DumpInner2:
 	jr		DumpInner2
 Dump03:
 	call		TerminateLine
-	ld		hl, linebuf
+	ld		hl, mon_linebuf
 	call		PrintStringA
 	pop		bc
 	dec		b
@@ -403,7 +272,7 @@ DumpContinueStr:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 In:
-	ld		a, (argc)
+	ld		a, (mon_argc)
 	cp		1
 	jr		z, In00
 	ld		hl, InErrStr
@@ -415,10 +284,10 @@ In00:
 	call		Read8bit
 	ld		c, a
 	in		a, (c)
-	ld		hl, linebuf	; Point to start of output
+	ld		hl, mon_linebuf	; Point to start of output
 	call		StrfHex		; Write hex string
 	call		TerminateLine	; Add \n\r\0
-	ld		hl, linebuf	; Print output
+	ld		hl, mon_linebuf	; Print output
 	call		PrintStringA
 	ret
 
@@ -430,10 +299,9 @@ Help:
 	ret
 	helpmessage:	defm "LM-512 Monitor commands:\n\r"
 	defm "BANK PG: Switch highest 32KB to bank PG.\n\r"
-	defm "CFBOOT: Read MBR from CF card to RAM and execute.\n\r"
 	defm "CFLOAD ADR STARTSEC SECS: Read SECS 512 byte sectors from CF card, starting from STARTSEC, to address ADR.\n\r"
 	defm "CFSAVE STARTSEC ADR SECS: Write SECS 512 byte sectors to CF card, starting from address, to sector STARTSEC.\n\r"
-	defm "DATE: Print current date and time.\n\r"
+	defm "CONTINUE: Resume program execution.\n\r"
 	defm "DUMP ADR: Dump 256 bytes of memory starting from ADR in hex format.\n\r"
 	defm "HELP: Print this help message.\n\r"
 	defm "IN PORT: Read byte from given I/O port.\n\r"
@@ -441,14 +309,11 @@ Help:
 	defm "MEMCPY DEST SRC BYTES: Copy BYTES consecutive bytes from SRC to DEST\n\r"
 	defm "MEMED ADR: Edit memory byte by byte, starting from ADR.  Press Ctrl-C to end editing.\n\r"
 	defm "OUT PORT VAL: Write byte VAL to given I/O port.\n\r"
-	defm "PEEK ADR: Print byte stored at address ADR.\n\r"
-	defm "POKE ADR VAL: Store byte VAL at address ADR.\n\r"
-	defm "SERLOAD ADR: Read data from serial port 2 to address ADR.\n\r\0"
 	
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 Jump:
-	ld		a, (argc)
+	ld		a, (mon_argc)
 	cp		1
 	jr		z, Jump00
 	ld		hl, JumpErrStr
@@ -457,7 +322,7 @@ Jump:
 JumpErrStr:
 	defm		"JUMP expects exactly one arg (4 digit hex address)\r\n\0"
 Jump00:
-	ld		hl, (argv)
+	ld		hl, (mon_argv)
 	call		ValidateAddress
 	jr		z, Jump01
 	ret
@@ -470,7 +335,7 @@ Jump01:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 Memcpy:
-	ld		a, (argc)
+	ld		a, (mon_argc)
 	cp		3
 	jr		z, Memcpy00
 	ld		hl, MemcpyArgcErrStr
@@ -480,13 +345,13 @@ MemcpyArgcErrStr:
 	defm		"MEMCPY expects exactly three args (Two 4 digit hex addresses and one 4 digit hex byte count\r\n\0"
 Memcpy00:
 	; Validate, parse and push destination
-	ld		hl, (argv)
+	ld		hl, (mon_argv)
 	call		ValidateAddress
 	ret		nz
 	call		Read16bit
 	push		bc	
 	; Validate, parse and push source
-	ld		hl, (argv+2)
+	ld		hl, (mon_argv+2)
 	call		ValidateAddress
 	jr		z, Memcpy01
 	pop		bc
@@ -495,7 +360,7 @@ Memcpy01:
 	call		Read16bit
 	push		bc	
 	; Validate, parse and push count
-	ld		hl, (argv+4)
+	ld		hl, (mon_argv+4)
 	call		ValidateAddress
 	jr		z, Memcpy02
 	pop		bc
@@ -511,7 +376,7 @@ Memcpy02:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 Memed:
-	ld		a, (argc)
+	ld		a, (mon_argc)
 	cp		1
 	jr		z, Memed00
 	ld		hl, MemedArgcErrStr
@@ -521,14 +386,14 @@ MemedArgcErrStr:
 	defm		"MEMED expects exactly one args (a 4 digit hex addresses\r\n\0"
 Memed00:
 	; Validate, parse and push destination
-	ld		hl, (argv)
+	ld		hl, (mon_argv)
 	call		ValidateAddress
 	ret		nz
 	call		Read16bit
 	ld		d, b
 	ld		e, c
 Memed01:
-	ld		hl, linebuf
+	ld		hl, mon_linebuf
 	ld		a, d
 	call		StrfHex
 	ld		a, e
@@ -540,7 +405,7 @@ Memed01:
 	ld		(hl), " "
 	inc		hl
 	ld		(hl), "\0"
-	ld		hl, linebuf
+	ld		hl, mon_linebuf
 	call		PrintStringA
 	call		ReadLineA
 	ret		nz	; User hit Ctrl-C
@@ -560,7 +425,7 @@ Memed02:
 	
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Out:
-	ld		a, (argc)
+	ld		a, (mon_argc)
 	cp		2
 	jr		z, Out00
 	ld		hl, OutErrStr
@@ -569,148 +434,23 @@ Out:
 OutErrStr:
 	defm		"OUT expects exactly two args (A 2 digit hex address, a 2 digit hex value)\r\n\0"
 Out00:
-	ld		hl, (argv)
+	ld		hl, (mon_argv)
 	call		ValidateValue
 	jr		z, Out01
 	ret
 Out01:
-	ld		hl, (argv+2)
+	ld		hl, (mon_argv+2)
 	call		ValidateValue
 	jr		z, Out02
 	ret
 Out02:
-	ld		hl, (argv)
+	ld		hl, (mon_argv)
 	call		Read8bit
 	ld		c, a
-	ld		hl, (argv+2)
+	ld		hl, (mon_argv+2)
 	call		Read8bit
 	out		(c), a
 	ret
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-Peek:
-	; Check argument count
-	ld		a, (argc)
-	cp		1
-	jr		z, Peek00
-	ld		hl, PeekArgcErrorStr
-	call		PrintStringA
-	ret
-PeekArgcErrorStr:
-	defm		"PEEK expects exactly one arg (4 digit hex address)\r\n\0"
-Peek00:
-	ld		hl, (argv)
-	call		ValidateAddress
-	jr		z, Peek01
-	ret
-Peek01:
-	call		Read16bit	; Read address into BC
-	ld		a, (bc)		; Read from BC to A
-	ld		hl, linebuf	; Point to start of output
-	call		StrfHex		; Write hex string
-	call		TerminateLine	; Add \n\r\0
-	ld		hl, linebuf	; Print output
-	call		PrintStringA
-	ret
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-Poke:
-	; Check argument count
-	ld		a, (argc)
-	cp		2
-	jr		z, Poke00
-	ld		hl, PokeArgcErrorStr
-	call		PrintStringA
-	ret
-PokeArgcErrorStr:
-	defm		"POKE expects exactly two args (A 4 digit hex address, a 2 digit hex value)\r\n\0"
-Poke00:
-	; Validate address
-	ld		hl, (argv)
-	call		ValidateAddress
-	ret		nz
-	; Convert and stash address
-	call		Read16bit
-	push		bc
-	; Validate value
-	ld		hl, (argv+2)
-	call		ValidateValue
-	ret		nz
-	; Convert value
-	call		Read8bit
-	; Recover address
-	pop		hl
-	; Do it
-	ld		(hl), a
-	ret
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-proto_hello: equ $00
-proto_hello_ack: equ $0F
-proto_bytes: equ $F0
-proto_send:  equ $FF
-
-SerialLoad:
-	; Check argc
-	ld		a, (argc)
-	cp		1
-	jr		z, SerialLoad00
-	ld		hl, SerialLoadArgcErrorStr
-	call		PrintStringA
-	ret
-SerialLoadArgcErrorStr:
-	defm		"SERLOAD expects exactly one arg (4 digit hex address)\r\n\0"
-SerialLoad00:
-	; Validate address
-	ld		hl, (argv)
-	call		ValidateAddress
-	ret		nz
-	; Parse address and store in HL
-	call		Read16bit
-	ld		h, b
-	ld		l, c
-	; Reset server
-	ld		a, proto_hello
-	call		SERIAL_WRITE_B
-	call		SERIAL_READ_B
-	cp		proto_hello_ack
-	jp		z, SerialLoad01
-SerialLoad01:
-transfer_outer_loop:
-	ld		a, proto_bytes
-	call		SERIAL_WRITE_B
-	call		SERIAL_READ_B
-	ld c, a
-	cp 0
-	ret		z
-	push		bc
-	ld		a, proto_send
-	call		SERIAL_WRITE_B
-transfer_inner_loop:
-	call		SERIAL_READ_B
-	ld		(hl), a
-	inc		hl
-	dec		c
-	ld		a, c
-	cp		0
-	jr		nz, transfer_inner_loop
-	pop		bc
-	push		hl
-	ld		a, c
-	ld		hl, linebuf
-	call		StrfHex
-	ld		(hl), "\0"
-	ld		hl, linebuf
-	call		PrintStringA
-	ld		hl, SerialLoadStr
-	call		PrintStringA
-	pop		hl
-	jr		transfer_outer_loop
-SerialLoadStr:
-	defm		" bytes transferred.\r\n\0"
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

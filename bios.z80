@@ -46,9 +46,9 @@ Main:
 	call		UartInit
 	call		CfSetup
 MainLoop:
-	; Start monitor
-	call		Monitor
-	; Loop
+	; Start DOS
+	call		Dos
+	; Loop - this should never happen, but safety first.
 	jp MainLoop
 
 UartInit:
