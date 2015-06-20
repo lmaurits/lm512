@@ -9,27 +9,31 @@ defs 5, 0x00	; Align BIOS table 4 bytes into ROMBASE
 
 ; BIOS call table
 
-SERIAL_READ_A:		jp ReadA
+SERIAL_READ_A:		jp ReadA		; 0x0008
 defb 0x00
 SERIAL_WRITE_A:		jp WriteA
 defb 0x00
-SERIAL_READ_B:		jp ReadB
+SERIAL_READ_B:		jp ReadB		; 0x0010
 defb 0x00
 SERIAL_WRITE_B:		jp WriteB
 defb 0x00
-RTC_READ:		jp GetRTC
+RTC_READ:		jp GetRTC		; 0x0018
 defb 0x00
 RTC_WRITE:		jp SetRTC
 defb 0x00
-CF_READ:		jp CfReadSectors
+CF_READ:		jp CfReadSectors	; 0x0020
 defb 0x00
 CF_WRITE:		jp CfWriteSectors
 defb 0x00
-SERIAL_INIT_A:		jp UartInitA
+SERIAL_INIT_A:		jp UartInitA		; 0x0028
 defb 0x00
 SERIAL_INIT_B:		jp UartInitB
 defb 0x00
+MONITOR:		jp Monitor		; 0x0030
+defb 0x00
 BANK:			jp SetMemBank
+defb 0x00
+defm 0x00, 0x00, 0x00				; 0x0038 reserved for int
 
 ; Code generating includes
 ;include 'debug.z80'
