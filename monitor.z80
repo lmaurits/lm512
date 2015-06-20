@@ -309,6 +309,7 @@ Help:
 	defm "MEMCPY DEST SRC BYTES: Copy BYTES consecutive bytes from SRC to DEST\n\r"
 	defm "MEMED ADR: Edit memory byte by byte, starting from ADR.  Press Ctrl-C to end editing.\n\r"
 	defm "OUT PORT VAL: Write byte VAL to given I/O port.\n\r"
+	defm "\0"
 	
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
