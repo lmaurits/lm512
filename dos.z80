@@ -197,7 +197,8 @@ DosHelp:
 	dos_helpmessage:	defm "LM-512 DOS commands:\n\r"
 	defm "CFBOOT: Read MBR from CF card to RAM and execute.\n\r"
 	defm "DATE: Print current date and time.\n\r"
-	defm "SERLOAD ADR: Read data from serial port 2 to address ADR.\n\r\0"
+	defm "SERLOAD ADR: Read data from serial port 2 to address ADR.\n\r"
+	defm "\0"
 	
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
