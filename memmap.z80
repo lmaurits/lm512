@@ -9,3 +9,5 @@ dos_argv:	equ dos_argc+2
 mon_linebuf:	equ dos_argv+32
 mon_argc:	equ mon_linebuf+256
 mon_argv:	equ mon_argc+2
+mon_stack_backup:	equ mon_argv+2
+mon_reg_stack:	equ mon_stack_backup+22

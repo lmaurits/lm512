@@ -5,6 +5,30 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 Monitor:
+	; Backup stack pointer
+	ld		(mon_stack_backup), SP
+	; Save all registers
+	ld		sp, mon_reg_stack+1
+	push		af
+	push		bc
+	push		de
+	push		hl
+	ex		af, af'
+	exx
+	push		af
+	push		bc
+	push		de
+	push		hl
+	ex		af, af'
+	exx
+	push		ix
+	push		iy
+	; Restore original stack pointer
+	ld		SP, (mon_stack_backup)
+MonitorStart:
+	ld		hl, monwelcomestr
+	call		PrintStringA
+	call		Registers
 MonitorLoop:
 ; Infinite loop of read, parse, dispatch
 	ld		hl, monpromptstr
@@ -18,6 +42,30 @@ MonitorLoop:
 	jr		z, Monitor
 	call		MonitorHandleLine
 	jr		MonitorLoop
+MonitorExit:
+	; Backup stack pointer
+	ld		(mon_stack_backup), SP
+	; Restore all registers
+	ld		sp, mon_reg_stack+1
+	pop		iy
+	pop		ix
+	ex		af, af'
+	exx
+	pop		hl
+	pop		de
+	pop		bc
+	pop		af
+	ex		af, af'
+	exx
+	pop		hl
+	pop		de
+	pop		bc
+	pop		af
+	; Restore original stack pointer
+	ld		SP, (mon_stack_backup)
+	ret
+monwelcomestr:
+	defm		"*** MONITOR\r\n\0"
 monpromptstr:
 	defm		"$ \0"
 
@@ -48,6 +96,8 @@ helpstr:	defm "HELP\0"
 jumpstr:	defm "JUMP\0"
 memcpystr:	defm "MEMCPY\0"
 memedstr:	defm "MEMED\0"
+regstr:		defm "REGISTERS\0"
+stackstr:	defm "STACK\0"
 outstr:		defm "OUT\0"
 nullstr:	defm "\0"
 
@@ -64,6 +114,8 @@ mondispatch_table:
 	defw memcpystr, Memcpy
 	defw memedstr, Memed
 	defw outstr, Out
+	defw regstr, Registers
+	defw stackstr, Stack
 	defw nullstr, What
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -190,10 +242,10 @@ CfSaveErrorStr:
 
 Continue:
 	; Pop the return address which leads back to the monitor loop
-	pop		hl
-	pop		hl
-	; Now return to wherever we were called from
-	ret
+	pop		hl	; Break out of Dispatch
+	pop		hl	; Break out of MonitorHandleLine
+	; Break out of monitor loop
+	jp		MonitorExit
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -425,6 +477,69 @@ Memed02:
 	jr		Memed01
 	
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+Registers:
+	ld		hl, reg_labels
+	call		PrintStringA
+	ld		de, mon_reg_stack
+	ld		hl, mon_linebuf
+	call		RegisterPrint
+
+	ld		hl, alt_reg_labels
+	call		PrintStringA
+	ld		hl, mon_linebuf
+	call		RegisterPrint
+
+	ld		hl, i_reg_labels
+	call		PrintStringA
+	ld		hl, mon_linebuf
+	ld		a, (de)
+	dec		de
+	call		StrfHex
+	ld		(hl), " "
+	inc		hl
+	ld		a, (de)
+	dec		de
+	call		StrfHex
+	ld		(hl), " "
+	inc		hl
+	ld		a, (de)
+	dec		de
+	call		StrfHex
+	ld		(hl), " "
+	inc		hl
+	ld		a, (de)
+	call		StrfHex
+	ld		(hl), " "
+	inc		hl
+	call		TerminateLine
+	ld		hl, mon_linebuf
+	call		PrintStringA
+
+	ret
+
+RegisterPrint:
+	ld		b, 8
+RegisterPrintLoop:
+	ld		a, (de)
+	dec		de
+	call		StrfHex
+	ld		(hl), " "
+	inc		hl
+	djnz		RegisterPrintLoop
+	call		TerminateLine
+	ld		hl, mon_linebuf
+	call		PrintStringA
+	ret
+
+reg_labels:
+	defm		"A  F  B  C  D  E  H  L\r\n\0"
+alt_reg_labels:
+	defm		"A' F' B' C' D' E' H' L'\r\n\0"
+i_reg_labels:
+	defm		"IX    IY\r\n\0"
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Out:
 	ld		a, (mon_argc)
 	cp		2
@@ -451,6 +566,29 @@ Out02:
 	ld		hl, (mon_argv+2)
 	call		Read8bit
 	out		(c), a
+	ret
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+Stack:
+	ld		de, (mon_stack_backup)
+	ld		b, 8
+StackLoop:
+	push		bc
+	ld		hl, mon_linebuf
+	inc		de
+	ld		a, (de)
+	call		StrfHex
+	dec		de
+	ld		a, (de)
+	inc		de
+	inc		de
+	call		StrfHex
+	call		TerminateLine
+	ld		hl, mon_linebuf
+	call		PrintStringA
+	pop		bc
+	djnz		StackLoop
 	ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
