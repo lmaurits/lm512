@@ -36,7 +36,6 @@ defb 0x00
 defm 0x00, 0x00, 0x00				; 0x0038 reserved for int
 
 ; Code generating includes
-;include 'debug.z80'
 include 'mmu.z80'
 include 'uart.z80'
 include 'cf.z80'
