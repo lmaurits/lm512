@@ -204,7 +204,7 @@ DosHelp:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 EnterMonitor:
-	call Monitor
+	call		Monitor
 	ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
