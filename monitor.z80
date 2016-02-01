@@ -330,6 +330,7 @@ In:
 InErrStr:
 	defm		"IN expects exactly one arg (2 digit hex address)\r\n\0"
 In00:
+	ld		hl, (mon_argv)
 	call		Read8bit
 	ld		c, a
 	in		a, (c)
@@ -561,8 +562,10 @@ Out02:
 	ld		hl, (mon_argv)
 	call		Read8bit
 	ld		c, a
+	push		bc
 	ld		hl, (mon_argv+2)
 	call		Read8bit
+	pop		bc
 	out		(c), a
 	ret
 
