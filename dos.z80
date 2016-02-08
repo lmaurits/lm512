@@ -4,15 +4,18 @@
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-Dos:
+include 'fat.z80'
 
+Dos:
+	
 	; Print welcome message
 	ld hl, welcomestr
 	call PrintStringA
+	; Initialise filesystem
+	call		InitFAT
 	; Start processing commands
 	jp DosLoop
 	welcomestr: defm "Welcome to LM-512 microcomputer system.\n\r\0"
-
 DosLoop:
 ; Infinite loop of read, parse, dispatch
 	ld		hl, dos_promptstr
@@ -48,6 +51,7 @@ DosHandleLine:
 
 cfbootstr:	defm "CFBOOT\0"
 datestr:	defm "DATE\0"
+lsstr:		defm "LS\0"
 monstr:		defm "MONITOR\0"
 serloadstr:	defm "SERLOAD\0"
 
@@ -55,10 +59,11 @@ serloadstr:	defm "SERLOAD\0"
 dos_dispatch_table:
 	defw cfbootstr, CfBoot
 	defw datestr, Date
+	defw lsstr, Ls
 	defw helpstr, DosHelp
 	defw monstr, EnterMonitor
 	defw serloadstr, SerialLoad
-	defw nullstr, What
+	defw nullstr, LoadFile
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
@@ -190,6 +195,12 @@ WriteComponent:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+Ls:
+	call ListRootDir
+	ret
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 DosHelp:
 	ld hl, dos_helpmessage
 	call PrintStringA
@@ -273,3 +284,13 @@ transfer_inner_loop:
 SerialLoadStr:
 	defm		" bytes transferred.\r\n\0"
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; LOAD FILE
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+LoadFile:
+	ld		hl, dos_linebuf
+	call		ExecuteFile
+	ret
