@@ -85,11 +85,13 @@ BuildFilenameStringAddDirSlash:
 BuildFilenameEnd:
 	ret
 
-ListRootDir:
-	; Print everything in the root directory, one line per item.
+WalkRootDir:
+	; Walk the root directory, executing callbacks along the way
+	ld	a, 00
+	ld	(dir_walk_breakout), a
 	call	ReadRootDir
 	ld	hl, fat_sector_buffer
-ListRootDirLoop:
+WalkRootDirLoop:
 	; Read directory entry
 	ld	de, dir_entry_buffer
 	ld	bc, 32
@@ -99,59 +101,85 @@ ListRootDirLoop:
 	ld	hl, filename
 	ld	a, (hl)
 	cp	0x00
-	jr	z, End
+	jr	z, WalkRootDirEnd
 	; Check for free entry, and if so skip
 	cp	0xE5
-	jr	z, Next
+	jr	z, WalkRootDirNext
 	; Check for LFN entry, and if so skip
 	ld	a, (attribs)
 	cp	0x0f
-	jp	z, Next
-	; At this point, we actually want to list this.  So, build a string
+	jr	z, WalkRootDirNext
+	; Execute callback
+	ld	hl, (dir_walk_loop_callback)
+	ld	de, WalkRootDirLoopReentry	; Manually push return address.
+	push	de
+	jp	(hl)
+WalkRootDirLoopReentry:
+	; Check if the callback asked us to break out of the loop
+	ld	a, (dir_walk_breakout)
+	cp	0
+	jr	nz,WalkRootDirBreakout
+WalkRootDirNext:
+	; Continue looping
+	pop	hl
+	jr WalkRootDirLoop
+WalkRootDirBreakout:
+	pop	hl
+	; Execute callback
+	; Don't push a return address - the ret of the callback will return
+	; to the caller of WalkRootDir, which is fine
+	ld	hl, (dir_walk_break_callback)
+	jp	(hl)
+WalkRootDirEnd:
+	pop	hl
+	; Execute callback
+	; Don't push a return address - the ret of the callback will return
+	; to the caller of WalkRootDir, which is fine
+	ld	hl, (dir_walk_end_callback)
+	jp	(hl)
+
+;;;;;;;;;;;;
+
+ListRootDir:
+	ld	hl, ListLoopCallback
+	ld	(dir_walk_loop_callback), hl
+	ld	hl, NullCallback
+	ld	(dir_walk_break_callback), hl
+	ld	(dir_walk_end_callback), hl
+	call	WalkRootDir
+	ret
+
+ListLoopCallback:
 	call	BuildFilenameString
 	call	TerminateLine
 	ld	hl, filename_buffer
 	call	PrintStringA
-Next:
-	; Continue looping
-	pop	hl
-	jr ListRootDirLoop
-End:
-	pop	hl
 	ret
+
+;;;;;;;;;;;;
 
 ExecuteFile:
 	; HL points to a filename we want to execute
 	; Save it for later
 	ld	(target_filename_ptr), hl
-	call	ReadRootDir
-	ld	hl, fat_sector_buffer
-ExecuteFileLoop:
-	; Read directory entry
-	ld	de, dir_entry_buffer
-	ld	bc, 32
-	ldir
-	push	hl
-	; Check for end of dir
-	ld	hl, filename
-	ld	a, (hl)
-	cp	0x00
-	jr	z, ExecuteFileEnd
-	; Check for free entry, and if so skip
-	cp	0xE5
-	jr	z, ExecuteFileNext
-	; Check for LFN entry, and if so skip
-	ld	a, (attribs)
-	cp	0x0f
-	jp	z, ExecuteFileNext
-	; At this point, we actually want to test for a filename match.
+	ld	hl, ExecLoopCallback
+	ld	(dir_walk_loop_callback), hl
+	ld	hl, NullCallback
+	ld	(dir_walk_break_callback), hl
+	ld	hl, ExecEndCallback
+	ld	(dir_walk_end_callback), hl
+	call	WalkRootDir
+	ret
+
+ExecLoopCallback:
 	call	BuildFilenameString
 	ld	(hl), "\0"		; BuildFilenameString doesn't terminate!
 	ld	hl, filename_buffer
 	ld	de, (target_filename_ptr)
 	call	StrictStrCmp
-	jr	nz, ExecuteFileNext
-	; At this point, we've apparently matched
+	ret	nz
+	; At this point, we've matched
+	; Calculate first sector of the file
 	ld	hl, (partition_start_sec)	; Start HL at partition start
 	ld	bc, (starting_cluster)	; Read starting cluster
 	add	hl, bc			; add offset from start of data region
@@ -173,17 +201,21 @@ ExecuteFileLoop:
 	ld	a, 0x01
 	ld	hl, 0x8000
 	rst	0x20	; call CF_READ
-	pop	hl
+	; Execute the file
 	call	0x8000
+	; Let the directory walker know we can break out of the loop
+	ld	a, 0xFF
+	ld	(dir_walk_breakout), a
 	ret
-ExecuteFileNext:
-	; Continue looping
-	pop	hl
-	jr ExecuteFileLoop
-ExecuteFileEnd:
-	pop	hl
+
+ExecEndCallback:
 	ld	hl, ExecuteFileFailMsg
 	call	PrintStringA
 	ret
-ExecuteFileFailMsg
+ExecuteFileFailMsg:
 	defm	"Bad command or filename.\r\n\0"
+
+;;;;;;;;;;
+
+NullCallback:
+	ret

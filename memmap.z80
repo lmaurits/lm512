@@ -42,5 +42,10 @@ starting_cluster:	equ last_write_date+2
 size_in_bytes:		equ starting_cluster+2
 ; Scratch stuff
 target_filename_ptr:	equ size_in_bytes+4
+; Directory walker config
+dir_walk_breakout:	equ target_filename_ptr+2
+dir_walk_loop_callback:	equ dir_walk_breakout+1
+dir_walk_end_callback:	equ dir_walk_loop_callback+2
+dir_walk_break_callback:equ dir_walk_end_callback+2
 
-; target_filename_ptr is 2 bytes
+; callback is 2 bytes
