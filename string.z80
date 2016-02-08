@@ -205,6 +205,23 @@ SkipWhitespace:
 	inc hl
 	jp SkipWhitespace
 
+StrStrip:
+	ld a,(hl)
+	cp "\0"
+	jr z, StrStrip01
+	inc hl
+	jr StrStrip
+StrStrip01:
+	dec hl
+	ld a,(hl)
+	cp " "
+	jr nz,StrStripEnd
+	ld (hl),"\0"
+	jr StrStrip01
+StrStripEnd:
+	inc hl
+	ret
+
 ;;;;;;;;;;;;;;;;;;;;;;;;
 
 Read8bit:
