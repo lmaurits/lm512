@@ -19,11 +19,11 @@ DosLoop:
 	call		PrintStringA
 	ld		hl, dos_linebuf
 	call		ReadLineA
-	jr		nz, Dos ; User stopped input using Ctrl-C
+	jr		nz, DosLoop ; User stopped input using Ctrl-C
 	ld		hl, dos_linebuf
 	ld		a, (hl)
 	cp		"\0"
-	jr		z, Dos
+	jr		z, DosLoop
 	call		DosHandleLine
 	jr		DosLoop
 dos_promptstr:
