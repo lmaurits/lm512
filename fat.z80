@@ -1,0 +1,189 @@
+InitFAT:
+ReadMBR:
+	; The MBR is the first sector of the disk.
+	ld	hl, fat_sector_buffer
+	ld	a, 01	; MBR is one sector
+	ld	b, 00	; MBR starts at sector 0
+	ld	c, 00
+	ld	d, 00
+	ld	e, 00
+	rst	0x20	; call CF_READ
+ReadVBR:
+	; The MBR contains the address of the first sector of partition 1
+	; Store this in memory for future reference, then read that sector
+	; (the VBR) into memory.
+	ld	ix, fat_sector_buffer+0x1BE
+	ld	c, (ix+0x08)
+	ld	a, c
+	ld	(partition_start_sec+0), a
+	ld	b, (ix+0x09)
+	ld	a, b
+	ld	(partition_start_sec+1), a
+	ld	e, (ix+0x0A)
+	ld	a, e
+	ld	(partition_start_sec+2), a
+	ld	d, (ix+0x0B)
+	ld	a, d
+	ld	(partition_start_sec+3), a
+	ld	a, 01	; VBR is one sector
+	ld	hl, fat_sector_buffer
+	rst	0x20	; call CF_READ
+ReadBPB:
+	; The VBR contains essential information on the FAT filesystem
+	; Store all of this in memory for future reference
+	ld	hl, fat_sector_buffer+0x0B
+	ld	de, fat_spec_table
+	ld	bc, 13
+	ldir
+	ret
+ReadRootDir:
+	; Assuming that the fat_spec_table is correctly populated, compute
+	; the address of the first sector of the root directory, and load
+	; it into the sector buffer.  Note that this function is currently
+	; LAZY, i.e. it makes assumptions about the FAT spec, e.g. that there
+	; are 2 FATs.
+	ld	hl, (partition_start_sec)	; Start HL at partition start
+	ld	bc, (reserved_sectors)
+	add	hl, bc			; Skip past reserved sectors
+	ld	bc, (sectors_per_fat)
+	add	hl, bc			; Skip past first FAT
+	add	hl, bc			; Skip past second FAT
+	ld	b, h
+	ld	c, l
+	ld	d, 0
+	ld	e, 0
+	ld	a, 0x01
+	ld	hl, fat_sector_buffer
+	rst	0x20	; call CF_READ
+	ret
+
+BuildFilenameString:
+	ld	hl, filename
+	ld	de, filename_buffer	; DE at filename, HL at dir entry
+	ld	bc, 8			; Copy 8 chars to filename buffer
+	ldir
+	ex	de, hl			; Terminate this 8 char string
+	ld	(hl), "\0"
+	ld	hl, filename_buffer	; Remove trailing whitespace
+	call	StrStrip
+	ld	de, extension		; Check if there is a file extension
+	ld	a, (de)
+	cp	" "
+	jr	z, BuildFilenameStringAddDirSlash
+	ld	(hl), "."		; Write the file extension separator
+	inc	hl
+	ex	de, hl			; Now HL=extension, DE=filename_buffer
+	ld	bc, 3			; Copy 3 chars (ext) to fname buffer
+	ldir
+	ex	de, hl			; Now HL=filename_buffer
+BuildFilenameStringAddDirSlash:
+	ld	a,(attribs)		; Get attribute byte
+	and	00010000b;		; Mask out the directory bit
+	jp	z, BuildFilenameEnd	; If not a dir, we're done
+	ld	(hl), "/"		; If we're a dir, add a slash
+	inc	hl
+BuildFilenameEnd:
+	ret
+
+ListRootDir:
+	; Print everything in the root directory, one line per item.
+	call	ReadRootDir
+	ld	hl, fat_sector_buffer
+ListRootDirLoop:
+	; Read directory entry
+	ld	de, dir_entry_buffer
+	ld	bc, 32
+	ldir
+	push	hl
+	; Check for end of dir
+	ld	hl, filename
+	ld	a, (hl)
+	cp	0x00
+	jr	z, End
+	; Check for free entry, and if so skip
+	cp	0xE5
+	jr	z, Next
+	; Check for LFN entry, and if so skip
+	ld	a, (attribs)
+	cp	0x0f
+	jp	z, Next
+	; At this point, we actually want to list this.  So, build a string
+	call	BuildFilenameString
+	call	TerminateLine
+	ld	hl, filename_buffer
+	call	PrintStringA
+Next:
+	; Continue looping
+	pop	hl
+	jr ListRootDirLoop
+End:
+	pop	hl
+	ret
+
+ExecuteFile:
+	; HL points to a filename we want to execute
+	; Save it for later
+	ld	(target_filename_ptr), hl
+	call	ReadRootDir
+	ld	hl, fat_sector_buffer
+ExecuteFileLoop:
+	; Read directory entry
+	ld	de, dir_entry_buffer
+	ld	bc, 32
+	ldir
+	push	hl
+	; Check for end of dir
+	ld	hl, filename
+	ld	a, (hl)
+	cp	0x00
+	jr	z, ExecuteFileEnd
+	; Check for free entry, and if so skip
+	cp	0xE5
+	jr	z, ExecuteFileNext
+	; Check for LFN entry, and if so skip
+	ld	a, (attribs)
+	cp	0x0f
+	jp	z, ExecuteFileNext
+	; At this point, we actually want to test for a filename match.
+	call	BuildFilenameString
+	ld	(hl), "\0"		; BuildFilenameString doesn't terminate!
+	ld	hl, filename_buffer
+	ld	de, (target_filename_ptr)
+	call	StrictStrCmp
+	jr	nz, ExecuteFileNext
+	; At this point, we've apparently matched
+	ld	hl, (partition_start_sec)	; Start HL at partition start
+	ld	bc, (starting_cluster)	; Read starting cluster
+	add	hl, bc			; add offset from start of data region
+	or	a			; Clear carry flag
+	ld	bc, 2
+	sbc	hl, bc			; Subtract 2 (clusters 0, 1 don't map to data region)
+	ld	bc, (reserved_sectors)
+	add	hl, bc			; Skip past reserved sectors
+	ld	bc, (sectors_per_fat)
+	add	hl, bc			; Skip past first FAT
+	add	hl, bc			; Skip past second FAT
+	ld	bc, 32			; Skip past root directory - LAZY
+	add	hl, bc
+	; Read first sector into start of banked RAM
+	ld	b, h
+	ld	c, l
+	ld	d, 0
+	ld	e, 0
+	ld	a, 0x01
+	ld	hl, 0x8000
+	rst	0x20	; call CF_READ
+	pop	hl
+	call	0x8000
+	ret
+ExecuteFileNext:
+	; Continue looping
+	pop	hl
+	jr ExecuteFileLoop
+ExecuteFileEnd:
+	pop	hl
+	ld	hl, ExecuteFileFailMsg
+	call	PrintStringA
+	ret
+ExecuteFileFailMsg
+	defm	"Bad command or filename.\r\n\0"

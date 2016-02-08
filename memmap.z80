@@ -11,3 +11,36 @@ mon_argc:	equ mon_linebuf+256
 mon_argv:	equ mon_argc+2
 mon_stack_backup:	equ mon_argv+2
 mon_reg_stack:	equ mon_stack_backup+22
+
+fat_sector_buffer:	equ mon_reg_stack+2
+filename_buffer:	equ fat_sector_buffer + 512
+; FAT specs table
+partition_start_sec:	equ filename_buffer + 16
+fat_spec_table:		equ partition_start_sec+4
+bytes_per_sector:	equ fat_spec_table
+sectors_per_cluster:	equ bytes_per_sector+2
+reserved_sectors:	equ sectors_per_cluster+1
+no_of_fats:		equ reserved_sectors+2
+no_of_root_dir_ents:	equ no_of_fats+1
+small_total_sectors:	equ no_of_root_dir_ents+2
+media_descriptor:	equ small_total_sectors+2
+sectors_per_fat:	equ media_descriptor+1
+; Directory entry
+dir_entry_buffer:	equ sectors_per_fat+2
+filename:		equ dir_entry_buffer
+extension:		equ filename+8
+attribs:		equ extension+3
+more_attribs:		equ attribs+1
+creation_millis:	equ more_attribs+1
+creation_h_m_s:		equ creation_millis+1
+creation_date:		equ creation_h_m_s+2
+last_access_date:	equ creation_date+2
+yet_more_attribs:	equ last_access_date+2
+last_write_time:	equ yet_more_attribs+2
+last_write_date:	equ last_write_time+2
+starting_cluster:	equ last_write_date+2
+size_in_bytes:		equ starting_cluster+2
+; Scratch stuff
+target_filename_ptr:	equ size_in_bytes+4
+
+; target_filename_ptr is 2 bytes
