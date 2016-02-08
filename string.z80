@@ -87,6 +87,24 @@ StrCmp:
 	inc de
 	jp StrCmp
 
+StrictStrCmp:
+	; Load next chars of each string
+	ld a, (de)
+	ld b, a
+	ld a, (hl)
+	; Compare
+	cp b
+	; Return non-zero if chars don't match
+	ret nz
+	; Check for end of both strings
+	cp "\0"
+	; Return if strings have ended
+	ret z
+	; Otherwise, advance to next chars
+	inc hl
+	inc de
+	jr StrictStrCmp
+
 StrLen:
 	push hl
 	ld b, 0
