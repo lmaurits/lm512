@@ -258,6 +258,37 @@ ListLoopCallback:
 
 ;;;;;;;;;;;;
 
+LoadFile:
+	; HL points to a filename we want to load
+	; Save it for later
+	ld	(target_filename_ptr), hl
+	ld	hl, LoadLoopCallback
+	ld	(dir_walk_loop_callback), hl
+	ld	hl, NullCallback
+	ld	(dir_walk_break_callback), hl
+	ld	hl, ExecEndCallback
+	ld	(dir_walk_end_callback), hl
+	call	WalkRootDir
+	ret
+
+LoadLoopCallback:
+	call	BuildFilenameString
+	ld	(hl), "\0"		; BuildFilenameString doesn't terminate!
+	ld	hl, filename_buffer
+	ld	de, (target_filename_ptr)
+	call	StrictStrCmp
+	ret	nz
+	; At this point, we've matched
+	; Read the file into memory
+	ld	hl, 0x8000
+	call	ReadFile
+	; Let the directory walker know we can break out of the loop
+	ld	a, 0xFF
+	ld	(dir_walk_breakout), a
+	ret
+
+;;;;;;;;;;;;
+
 ExecuteFile:
 	; HL points to a filename we want to execute
 	; Save it for later

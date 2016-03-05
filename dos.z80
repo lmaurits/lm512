@@ -54,6 +54,7 @@ datestr:	defm "DATE\0"
 lsstr:		defm "LS\0"
 monstr:		defm "MONITOR\0"
 serloadstr:	defm "SERLOAD\0"
+loadstr:	defm "LOAD\0"
 
 ; Table linking command strings to function entry points
 dos_dispatch_table:
@@ -63,7 +64,8 @@ dos_dispatch_table:
 	defw helpstr, DosHelp
 	defw monstr, EnterMonitor
 	defw serloadstr, SerialLoad
-	defw nullstr, LoadFile
+	defw loadstr, DosLoadFile
+	defw nullstr, ExecFile
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
@@ -290,7 +292,18 @@ SerialLoadStr:
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-LoadFile:
+DosLoadFile:
+	ld		hl, (dos_argv)
+	call		LoadFile
+	ret
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; EXEC FILE
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+ExecFile:
 	ld		hl, dos_linebuf
 	call		ExecuteFile
 	ret
