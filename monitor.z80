@@ -8,7 +8,7 @@ Monitor:
 	; Backup stack pointer
 	ld		(mon_stack_backup), SP
 	; Save all registers
-	ld		sp, mon_reg_stack+1
+	ld		sp, mon_reg_stack+2
 	push		af
 	push		bc
 	push		de
@@ -35,11 +35,11 @@ MonitorLoop:
 	call		PrintStringA
 	ld		hl, mon_linebuf
 	call		ReadLineA
-	jr		nz, Monitor ; User stopped input using Ctrl-C
+	jr		nz, MonitorLoop ; User stopped input using Ctrl-C
 	ld		hl, mon_linebuf
 	ld		a, (hl)
 	cp		"\0"
-	jr		z, Monitor
+	jr		z, MonitorLoop
 	call		MonitorHandleLine
 	jr		MonitorLoop
 MonitorExit:
