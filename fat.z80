@@ -195,13 +195,14 @@ AdvanceCluster:
 	ld	c, l
 	ld	d, 0
 	ld	e, 0
-	ld	hl, (fat_sector_buffer)
+	ld	hl, fat_sector_buffer
 	ld	a, 1
 	rst	0x20	; call CF_READ
 	; Offset into the sector we want is the low order byte of curent cluster
-	ld	hl, (fat_sector_buffer)
+	ld	hl, fat_sector_buffer
 	ld	bc, (current_cluster)
 	ld	b, 0
+	add	hl, bc
 	add	hl, bc
 	; Read FAT entry into BC
 	ld	c, (hl)
@@ -234,7 +235,7 @@ ReadFileLoop:
 	; Get next cluster
 	call	AdvanceCluster
 	; Check to see if done
-	jr	nc, ReadFileLoop
+	jr	c, ReadFileLoop
 	ret
 
 ;;;;;;;;;;;;
