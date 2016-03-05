@@ -14,7 +14,7 @@ mon_reg_stack:	equ mon_stack_backup+22
 
 fat_sector_buffer:	equ mon_reg_stack+2
 filename_buffer:	equ fat_sector_buffer + 512
-; FAT specs table
+; FAT specs table ;;;;;;;;;;;
 partition_start_sec:	equ filename_buffer + 16
 fat_spec_table:		equ partition_start_sec+4
 bytes_per_sector:	equ fat_spec_table
@@ -25,8 +25,12 @@ no_of_root_dir_ents:	equ no_of_fats+1
 small_total_sectors:	equ no_of_root_dir_ents+2
 media_descriptor:	equ small_total_sectors+2
 sectors_per_fat:	equ media_descriptor+1
-; Directory entry
-dir_entry_buffer:	equ sectors_per_fat+2
+; Derived FAT specs ;;;;;;;;;;;
+start_of_fat:		equ sectors_per_fat+2
+start_of_root_dir:	equ start_of_fat+2
+start_of_data:		equ start_of_root_dir+2
+; Directory entry ;;;;;;;;;;;;
+dir_entry_buffer:	equ start_of_data+2
 filename:		equ dir_entry_buffer
 extension:		equ filename+8
 attribs:		equ extension+3
@@ -40,10 +44,15 @@ last_write_time:	equ yet_more_attribs+2
 last_write_date:	equ last_write_time+2
 starting_cluster:	equ last_write_date+2
 size_in_bytes:		equ starting_cluster+2
-; Scratch stuff
-target_filename_ptr:	equ size_in_bytes+4
+; File loading stuff ;;;;;;;;;;;;;;
+current_cluster:	equ size_in_bytes+4
+memory_pointer:		equ current_cluster+2
+bytes_remaining:	equ memory_pointer+2
+; Scratch stuff ;;;;;;;;;;;;;;
+target_filename_ptr:	equ bytes_remaining+2
 ; Directory walker config
-dir_walk_breakout:	equ target_filename_ptr+2
+root_dir_sector:	equ target_filename_ptr+2
+dir_walk_breakout:	equ root_dir_sector+2
 dir_walk_loop_callback:	equ dir_walk_breakout+1
 dir_walk_end_callback:	equ dir_walk_loop_callback+2
 dir_walk_break_callback:equ dir_walk_end_callback+2

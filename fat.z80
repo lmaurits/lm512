@@ -35,21 +35,28 @@ ReadBPB:
 	ld	de, fat_spec_table
 	ld	bc, 13
 	ldir
+ComputeSectors:
+	; Compute the starting sectors of various regions of the FAT
+	ld	hl, (partition_start_sec)	; Start HL at partition start
+	ld	bc, (reserved_sectors)
+	add	hl, bc				; Skip past reserved sectors
+	ld	(start_of_fat), hl
+	ld	bc, (sectors_per_fat)
+	add	hl, bc			; Skip past first FAT
+	add	hl, bc			; Skip past second FAT
+	ld	(start_of_root_dir), hl
+	ld	bc, 32			; Skip past root directory - LAZY
+	add	hl, bc
+	ld	(start_of_data), hl
 	ret
+
 ReadRootDir:
 	; Assuming that the fat_spec_table is correctly populated, compute
 	; the address of the first sector of the root directory, and load
 	; it into the sector buffer.  Note that this function is currently
 	; LAZY, i.e. it makes assumptions about the FAT spec, e.g. that there
 	; are 2 FATs.
-	ld	hl, (partition_start_sec)	; Start HL at partition start
-	ld	bc, (reserved_sectors)
-	add	hl, bc			; Skip past reserved sectors
-	ld	bc, (sectors_per_fat)
-	add	hl, bc			; Skip past first FAT
-	add	hl, bc			; Skip past second FAT
-	ld	b, h
-	ld	c, l
+	ld	bc, (start_of_root_dir)
 	ld	d, 0
 	ld	e, 0
 	ld	a, 0x01
@@ -88,10 +95,25 @@ BuildFilenameEnd:
 WalkRootDir:
 	; Walk the root directory, executing callbacks along the way
 	ld	a, 00
-	ld	(dir_walk_breakout), a
-	call	ReadRootDir
+	ld	(dir_walk_breakout), a	; Clear breakout claf
+	ld	hl, (start_of_root_dir)	; Set root_dir_sector to first sector
+	ld	(root_dir_sector), hl	
+WalkRootDirOuterLoop:
+	; Read next sector of root dir into fat_sector_buffer
+	ld	bc, (root_dir_sector)
+	push	bc
+	ld	d, 0
+	ld	e, 0
+	ld	a, 0x01
 	ld	hl, fat_sector_buffer
-WalkRootDirLoop:
+	rst	0x20	; call CF_READ
+	pop	bc
+	inc	bc
+	ld	(root_dir_sector), bc
+	ld	b, 16	; Directory entries per sector
+	push	bc
+	ld	hl, fat_sector_buffer
+WalkRootDirInnerLoop:
 	; Read directory entry
 	ld	de, dir_entry_buffer
 	ld	bc, 32
@@ -122,9 +144,14 @@ WalkRootDirLoopReentry:
 WalkRootDirNext:
 	; Continue looping
 	pop	hl
-	jr WalkRootDirLoop
+	pop	bc
+	dec	b
+	jr	z, WalkRootDirOuterLoop
+	push	bc
+	jr	WalkRootDirInnerLoop
 WalkRootDirBreakout:
 	pop	hl
+	pop	bc
 	; Execute callback
 	; Don't push a return address - the ret of the callback will return
 	; to the caller of WalkRootDir, which is fine
@@ -132,11 +159,83 @@ WalkRootDirBreakout:
 	jp	(hl)
 WalkRootDirEnd:
 	pop	hl
+	pop	bc
 	; Execute callback
 	; Don't push a return address - the ret of the callback will return
 	; to the caller of WalkRootDir, which is fine
 	ld	hl, (dir_walk_end_callback)
 	jp	(hl)
+
+;;;;;;;;;;;;
+
+ClusterToSector:
+	; Load b,c,d,e with the sector corresponding to the cluster in hl
+	ld	bc, (start_of_data)
+	add	hl, bc			; add 1 sector per cluster
+	or	a			; Clear carry flag
+	ld	bc, 2
+	sbc	hl, bc			; Subtract 2 (clusters 0, 1 don't map to data region)
+	ld	b, h
+	ld	c, l
+	ld	d, 0
+	ld	e, 0
+	ret
+
+;;;;;;;;;;;;
+
+AdvanceCluster:
+	; Sector we want is start_of_fat + high order byte of current cluster
+	ld	hl, (start_of_fat)
+	ld	bc, (current_cluster)
+	ld	c, b
+	ld	b, 0
+	add	hl, bc
+	; Read that sector of the fat
+	ld	b, h
+	ld	c, l
+	ld	d, 0
+	ld	e, 0
+	ld	hl, (fat_sector_buffer)
+	ld	a, 1
+	rst	0x20	; call CF_READ
+	; Offset into the sector we want is the low order byte of curent cluster
+	ld	hl, (fat_sector_buffer)
+	ld	bc, (current_cluster)
+	ld	b, 0
+	add	hl, bc
+	; Read FAT entry into BC
+	ld	c, (hl)
+	inc	hl
+	ld	b, (hl)
+	ld	(current_cluster), bc
+	; Check if we're done
+	ld	hl, (current_cluster)
+	ld	bc, 0xFFF8
+	or	a			; Clear carry flag
+	sbc	hl, bc
+	ret
+
+;;;;;;;;;;;;
+
+ReadFile:
+	; Load the contents of the file corresponding to the current directory entry
+	; into memory at the location pointed to by HL
+	ld	(memory_pointer), hl
+	ld	hl, (starting_cluster)
+	ld	(current_cluster), hl
+ReadFileLoop:
+	; Convert current_cluster to sector in b,c,d,e
+	call	ClusterToSector
+	; Read one sector
+	ld	hl, (memory_pointer)
+	ld	a, 0x01
+	rst	0x20	; call CF_READ
+	ld	(memory_pointer), hl
+	; Get next cluster
+	call	AdvanceCluster
+	; Check to see if done
+	jr	nc, ReadFileLoop
+	ret
 
 ;;;;;;;;;;;;
 
@@ -179,28 +278,9 @@ ExecLoopCallback:
 	call	StrictStrCmp
 	ret	nz
 	; At this point, we've matched
-	; Calculate first sector of the file
-	ld	hl, (partition_start_sec)	; Start HL at partition start
-	ld	bc, (starting_cluster)	; Read starting cluster
-	add	hl, bc			; add offset from start of data region
-	or	a			; Clear carry flag
-	ld	bc, 2
-	sbc	hl, bc			; Subtract 2 (clusters 0, 1 don't map to data region)
-	ld	bc, (reserved_sectors)
-	add	hl, bc			; Skip past reserved sectors
-	ld	bc, (sectors_per_fat)
-	add	hl, bc			; Skip past first FAT
-	add	hl, bc			; Skip past second FAT
-	ld	bc, 32			; Skip past root directory - LAZY
-	add	hl, bc
-	; Read first sector into start of banked RAM
-	ld	b, h
-	ld	c, l
-	ld	d, 0
-	ld	e, 0
-	ld	a, 0x01
+	; Read the file into memory
 	ld	hl, 0x8000
-	rst	0x20	; call CF_READ
+	call	ReadFile
 	; Execute the file
 	call	0x8000
 	; Let the directory walker know we can break out of the loop
