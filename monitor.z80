@@ -271,7 +271,7 @@ DumpPreOuter:
 DumpOuter:
 	ld		hl, mon_linebuf
 	ld		b, 16
-DumpInner:
+DumpInner:	; Print address
 	ld		a, d
 	call		StrfHex
 	ld		a, e
@@ -279,7 +279,7 @@ DumpInner:
 	ld		(hl), "\t"
 	inc		hl
 DumpInner2:
-	ld		a, (de)		; Read from BC to A
+	ld		a, (de)		; Read from DE to A
 	inc		de
 	call		StrfHex
 	ld		(hl), " "
@@ -287,8 +287,41 @@ DumpInner2:
 	dec		b
 	ld		a, b
 	cp		0
-	jr		z, Dump03
+	jr		z, DumpASCII
 	jr		DumpInner2
+DumpASCII:
+	ld		(hl), "\t"
+	inc		hl
+; Rewind
+	ld		b, 16
+DumpDecLoop:
+	dec		de
+	djnz		DumpDecLoop
+	ld		b, 16
+DumpInner3:
+	ld		a, (de)		; Read from DE to A
+	inc		de
+	cp		32
+	jr		z, HandlePrintable
+	jr		c, HandleNonprintable
+	cp		127
+	jr		z, HandlePrintable
+	jr		c, HandlePrintable
+	jr		HandleNonprintable
+HandlePrintable:
+	ld		(hl), a
+	inc		hl
+	jr		DumpCont
+HandleNonprintable:
+	ld		(hl), "."
+	inc		hl
+	jr		DumpCont
+DumpCont:
+	dec		b
+	ld		a, b
+	cp		0
+	jr		z, Dump03
+	jr		DumpInner3
 Dump03:
 	call		TerminateLine
 	ld		hl, mon_linebuf
