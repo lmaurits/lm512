@@ -35,6 +35,11 @@ ReadBPB:
 	ld	de, fat_spec_table
 	ld	bc, 13
 	ldir
+; Assuming that the fat_spec_table is correctly populated, compute
+; the address of the first sector of the root directory, and load
+; it into the sector buffer.  Note that this function is currently
+; LAZY, i.e. it makes assumptions about the FAT spec, e.g. that there
+; are 2 FATs.
 ComputeSectors:
 	; Compute the starting sectors of various regions of the FAT
 	ld	hl, (partition_start_sec)	; Start HL at partition start
@@ -51,11 +56,6 @@ ComputeSectors:
 	ret
 
 ReadRootDir:
-	; Assuming that the fat_spec_table is correctly populated, compute
-	; the address of the first sector of the root directory, and load
-	; it into the sector buffer.  Note that this function is currently
-	; LAZY, i.e. it makes assumptions about the FAT spec, e.g. that there
-	; are 2 FATs.
 	ld	bc, (start_of_root_dir)
 	ld	d, 0
 	ld	e, 0
