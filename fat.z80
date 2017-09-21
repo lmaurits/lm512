@@ -35,12 +35,18 @@ ReadBPB:
 	ld	de, fat_spec_table
 	ld	bc, 13
 	ldir
+
+ComputeSectors:
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
 ; Assuming that the fat_spec_table is correctly populated, compute
 ; the address of the first sector of the root directory, and load
 ; it into the sector buffer.  Note that this function is currently
 ; LAZY, i.e. it makes assumptions about the FAT spec, e.g. that there
 ; are 2 FATs.
-ComputeSectors:
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 	; Compute the starting sectors of various regions of the FAT
 	ld	hl, (partition_start_sec)	; Start HL at partition start
 	ld	bc, (reserved_sectors)
@@ -56,6 +62,7 @@ ComputeSectors:
 	ret
 
 ReadRootDir:
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	ld	bc, (start_of_root_dir)
 	ld	d, 0
 	ld	e, 0
@@ -64,7 +71,10 @@ ReadRootDir:
 	rst	0x20	; call CF_READ
 	ret
 
+
 BuildFilenameString:
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 	ld	hl, filename
 	ld	de, filename_buffer	; DE at filename, HL at dir entry
 	ld	bc, 8			; Copy 8 chars to filename buffer
@@ -92,8 +102,26 @@ BuildFilenameStringAddDirSlash:
 BuildFilenameEnd:
 	ret
 
+
+
+
+
 WalkRootDir:
-	; Walk the root directory, executing callbacks along the way
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; Walk the root directory, executing callbacks along the way
+;
+; * dir_walk_loop_callback is called for each file.  By writing a non-zero
+;   value to dir_walk_breakout it can break out of the loop early.
+; * dir_walk_break_callback will be called at an early loop breakout
+; * dir_walk_end_callback will be called if the loop ends without being
+;   broken out of, after fully traversing the directory.
+;
+; All callbacks should end with a ret as per usual.  This function maintains
+; the stack such that this will return to wherever WalkRootDir was called from.
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 	ld	a, 00
 	ld	(dir_walk_breakout), a	; Clear breakout claf
 	ld	hl, (start_of_root_dir)	; Set root_dir_sector to first sector
