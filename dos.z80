@@ -246,6 +246,9 @@ SerialLoad00:
 	call		Read16bit
 	ld		h, b
 	ld		l, c
+SerialLoadCore:
+	; Track how many bytes we receive
+	ld		de, 0x0000
 	; Reset server
 	ld		a, proto_hello
 	call		SERIAL_WRITE_B
@@ -257,10 +260,21 @@ transfer_outer_loop:
 	ld		a, proto_bytes
 	call		SERIAL_WRITE_B
 	call		SERIAL_READ_B
-	ld c, a
+	; A now contains byte count.  Turn to 16 bit in BC
+	ld		b, 0
+	ld		c, a
+	; Increment byte received count
+	push		hl
+	push		de
+	pop		hl
+	add		hl, bc
+	push		hl
+	pop		de
+	pop		hl
+	; Make sure we wren't just told there are no more bytes
 	cp 0
-	ret		z
-	push		bc
+	jp		z, SerialLoadEnd
+	push		bc	; Preserve byte count c
 	ld		a, proto_send
 	call		SERIAL_WRITE_B
 transfer_inner_loop:
@@ -271,8 +285,8 @@ transfer_inner_loop:
 	ld		a, c
 	cp		0
 	jr		nz, transfer_inner_loop
-	pop		bc
-	push		hl
+	pop		bc	; Restore byte count c
+	push		hl	; Preserve address
 	ld		a, c
 	ld		hl, dos_linebuf
 	call		StrfHex
@@ -281,10 +295,24 @@ transfer_inner_loop:
 	call		PrintStringA
 	ld		hl, SerialLoadStr
 	call		PrintStringA
-	pop		hl
+	pop		hl	; Restore address
 	jr		transfer_outer_loop
+SerialLoadEnd:
+	ld		hl, dos_linebuf
+	ld		a, d
+	call		StrfHex
+	ld		a, e
+	call		StrfHex
+	ld		(hl), "\0"
+	ld		hl, dos_linebuf
+	call		PrintStringA
+	ld		hl, SerialLoadTotalStr
+	call		PrintStringA
+	ret
 SerialLoadStr:
 	defm		" bytes transferred.\r\n\0"
+SerialLoadTotalStr:
+	defm		" bytes transferred total.\r\n\0"
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
