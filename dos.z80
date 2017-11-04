@@ -279,17 +279,12 @@ transfer_outer_loop:
 	ld		b, 0
 	ld		c, a
 	; Increment byte received count
-	push		hl
-	push		de
-	pop		hl
+	ex		de, hl
 	add		hl, bc
-	push		hl
-	pop		de
-	pop		hl
+	ex		de, hl
 	; Make sure we wren't just told there are no more bytes
-	cp 0
+	cp		0
 	jp		z, SerialLoadEnd
-	push		bc	; Preserve byte count c
 	ld		a, proto_send
 	call		SERIAL_WRITE_B
 transfer_inner_loop:
@@ -300,19 +295,12 @@ transfer_inner_loop:
 	ld		a, c
 	cp		0
 	jr		nz, transfer_inner_loop
-	pop		bc	; Restore byte count c
-	push		hl	; Preserve address
-	ld		a, c
-	ld		hl, dos_linebuf
-	call		StrfHex
-	ld		(hl), "\0"
-	ld		hl, dos_linebuf
-	call		PrintStringA
-	ld		hl, SerialLoadStr
-	call		PrintStringA
-	pop		hl	; Restore address
+	ld		a, "."
+	call		SERIAL_WRITE_A
 	jr		transfer_outer_loop
 SerialLoadEnd:
+	ld		hl, dos_linebuf
+	call		TerminateLine
 	ld		hl, dos_linebuf
 	ld		a, d
 	call		StrfHex
@@ -321,13 +309,11 @@ SerialLoadEnd:
 	ld		(hl), "\0"
 	ld		hl, dos_linebuf
 	call		PrintStringA
-	ld		hl, SerialLoadTotalStr
+	ld		hl, SerialLoadStr
 	call		PrintStringA
 	ret
 SerialLoadStr:
 	defm		" bytes transferred.\r\n\0"
-SerialLoadTotalStr:
-	defm		" bytes transferred total.\r\n\0"
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
