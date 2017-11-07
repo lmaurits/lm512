@@ -8,7 +8,7 @@ Monitor:
 	; Backup stack pointer
 	ld		(mon_stack_backup), SP
 	; Save all registers
-	ld		sp, mon_reg_stack+2
+	ld		sp, mon_reg_stack+1
 	push		af
 	push		bc
 	push		de
@@ -46,7 +46,7 @@ MonitorExit:
 	; Backup stack pointer
 	ld		(mon_stack_backup), SP
 	; Restore all registers
-	ld		sp, mon_reg_stack+1
+	ld		sp, mon_reg_stack-19
 	pop		iy
 	pop		ix
 	ex		af, af'
