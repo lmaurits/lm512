@@ -1,60 +1,95 @@
-ROMBASE:	equ 0x0000
-RAMBASE:	equ 0x2000
-SYSSTACK:	equ 0x8000
+ROMBASE:		equ 0x0000
+RAMBASE:		equ 0x2000
+SYSSTACK:		equ 0x7FFF
 
-dos_linebuf:	equ RAMBASE
-dos_argc:	equ dos_linebuf+256
-dos_argv:	equ dos_argc+2
+; Below we use defs to define variables in RAM, starting at RAMBASE
+; This will actually output binary content, so when we're done we
+; use "seek 0" to overwrite it with actual code.  Even though our
+; empty space is overwritten, the labels remain valid in the
+; assembler, so can be used elsewhere.  This is a bit hacky and
+; assembler-dependent, but it permits a MUCH nicer layout for this
+; file than trying to use only "equ"!
 
-mon_linebuf:	equ dos_argv+32
-mon_argc:	equ mon_linebuf+256
-mon_argv:	equ mon_argc+2
-mon_stack_backup:	equ mon_argv+2
-mon_reg_stack:	equ mon_stack_backup+22
+org			RAMBASE
 
-fat_sector_buffer:	equ mon_reg_stack+2
-filename_buffer:	equ fat_sector_buffer + 512
+; Stuff for the inbuilt DOS
+dos_linebuf:		defs 256
+dos_argc:		defs 2
+dos_argv:		defs 32
+
+; Stuff for the monitor
+mon_linebuf:		defs 256
+mon_argc:		defs 2
+mon_argv:		defs 2
+mon_stack_backup:	defs 22
+mon_reg_stack:		defs 2
+
+; Stuff for the FAT driver
+fat_sector_buffer:	defs 512	
+fat_buffer_index:	defs 2
+filename_buffer:	defs 16
 ; FAT specs table ;;;;;;;;;;;
-partition_start_sec:	equ filename_buffer + 16
-fat_spec_table:		equ partition_start_sec+4
-bytes_per_sector:	equ fat_spec_table
-sectors_per_cluster:	equ bytes_per_sector+2
-reserved_sectors:	equ sectors_per_cluster+1
-no_of_fats:		equ reserved_sectors+2
-no_of_root_dir_ents:	equ no_of_fats+1
-small_total_sectors:	equ no_of_root_dir_ents+2
-media_descriptor:	equ small_total_sectors+2
-sectors_per_fat:	equ media_descriptor+1
-; Derived FAT specs ;;;;;;;;;;;
-start_of_fat:		equ sectors_per_fat+2
-start_of_root_dir:	equ start_of_fat+2
-start_of_data:		equ start_of_root_dir+2
-; Directory entry ;;;;;;;;;;;;
-dir_entry_buffer:	equ start_of_data+2
-filename:		equ dir_entry_buffer
-extension:		equ filename+8
-attribs:		equ extension+3
-more_attribs:		equ attribs+1
-creation_millis:	equ more_attribs+1
-creation_h_m_s:		equ creation_millis+1
-creation_date:		equ creation_h_m_s+2
-last_access_date:	equ creation_date+2
-yet_more_attribs:	equ last_access_date+2
-last_write_time:	equ yet_more_attribs+2
-last_write_date:	equ last_write_time+2
-starting_cluster:	equ last_write_date+2
-size_in_bytes:		equ starting_cluster+2
-; File loading stuff ;;;;;;;;;;;;;;
-current_cluster:	equ size_in_bytes+4
-memory_pointer:		equ current_cluster+2
-bytes_remaining:	equ memory_pointer+2
-; Scratch stuff ;;;;;;;;;;;;;;
-target_filename_ptr:	equ bytes_remaining+2
-; Directory walker config
-root_dir_sector:	equ target_filename_ptr+2
-dir_walk_breakout:	equ root_dir_sector+2
-dir_walk_loop_callback:	equ dir_walk_breakout+1
-dir_walk_end_callback:	equ dir_walk_loop_callback+2
-dir_walk_break_callback:equ dir_walk_end_callback+2
 
-; callback is 2 bytes
+partition_start_sec:	defs 4
+fat_spec_table:		
+bytes_per_sector:	defs 2
+sectors_per_cluster:	defs 1
+reserved_sectors:	defs 2
+no_of_fats:		defs 1
+no_of_root_dir_ents:	defs 2
+small_total_sectors:	defs 2
+media_descriptor:	defs 1
+sectors_per_fat:	defs 2
+
+; Derived FAT specs ;;;;;;;;;;;
+start_of_fat:		defs 2
+start_of_root_dir:	defs 2
+start_of_data:		defs 2
+
+fat_buffer:		defs 512
+fat_sector:		defs 2
+fat_cluster:		defs 2
+fat_index:		defs 1
+fat_mem_index:		defs 2
+
+root_dir_buffer:	defs 512
+root_dir_sector:	defs 2
+root_dir_index:		defs 1
+root_dir_mem_index:	defs 2
+
+; Directory entry ;;;;;;;;;;;;
+dir_entry_buffer:
+filename:		defs 8
+extension:		defs 3
+attribs:		defs 1
+more_attribs:		defs 1
+creation_millis:	defs 1
+creation_h_m_s:		defs 2
+creation_date:		defs 2
+last_access_date:	defs 2
+yet_more_attribs:	defs 2
+last_write_time:	defs 2
+last_write_date:	defs 2
+starting_cluster:	defs 2
+size_in_bytes:		defs 4
+
+
+; File loading stuff ;;;;;;;;;;;;;;
+current_cluster:	defs 2
+memory_pointer:		defs 2
+bytes_remaining:	defs 2
+total_bytes:		defs 2
+new_file_start_clu:	defs 2
+; Scratch stuff ;;;;;;;;;;;;;;
+target_filename_ptr:	defs 2
+need_to_add_dir_end:	defs 1
+
+; Directory walker config
+dir_walk_breakout:	defs 1
+dir_walk_loop_callback:	defs 2
+dir_walk_end_callback:	defs 2
+dir_walk_break_callback:defs 2
+
+ENDOFRAM:		defs 0
+; Rewind!
+seek 0

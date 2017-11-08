@@ -59,7 +59,66 @@ ComputeSectors:
 	ld	bc, 32			; Skip past root directory - LAZY
 	add	hl, bc
 	ld	(start_of_data), hl
+	; Dump some info for debugging
+
+	ld	hl, InitFatDebugStr1
+	call	PrintStringA
+	ld	hl, dos_linebuf
+	ld	de, (start_of_fat)
+	ld		a, d
+	call		StrfHex
+	ld		a, e
+	call		StrfHex
+	ld		(hl), "\r"
+	inc		hl
+	ld		(hl), "\n"
+	inc		hl
+	ld		(hl), "\0"
+	inc		hl
+	ld		hl, dos_linebuf
+	call		PrintStringA
+
+	ld	hl, InitFatDebugStr2
+	call	PrintStringA
+	ld	hl, dos_linebuf
+	ld	de, (start_of_root_dir)
+	ld		a, d
+	call		StrfHex
+	ld		a, e
+	call		StrfHex
+	ld		(hl), "\r"
+	inc		hl
+	ld		(hl), "\n"
+	inc		hl
+	ld		(hl), "\0"
+	inc		hl
+	ld		hl, dos_linebuf
+	call		PrintStringA
+
+	ld	hl, InitFatDebugStr3
+	call	PrintStringA
+	ld	hl, dos_linebuf
+	ld	de, (start_of_data)
+	ld		a, d
+	call		StrfHex
+	ld		a, e
+	call		StrfHex
+	ld		(hl), "\r"
+	inc		hl
+	ld		(hl), "\n"
+	inc		hl
+	ld		(hl), "\0"
+	inc		hl
+	ld		hl, dos_linebuf
+	call		PrintStringA
 	ret
+
+InitFatDebugStr1:
+	defm	"Start of FAT: \0"
+InitFatDebugStr2:
+	defm	"Start of root dir: \0"
+InitFatDebugStr3:
+	defm	"Start of data: \0"
 
 ReadRootDir:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -271,3 +330,313 @@ ReadFileLoop:
 	jr	c, ReadFileLoop
 	ret
 
+;;;;;;;;;;;;
+
+ResetFat:
+	; Read first sector of FAT off disk
+	ld	hl, fat_buffer
+	ld	bc, (start_of_fat)
+	ld	(fat_sector), bc
+ResetFatAdvanceSectorEntryPoint:
+	ld	d, 0
+	ld	e, 0
+	ld	a, 0x01
+	rst	0x20	; call CF_READ
+	; Skip over reserved clusters
+	ld	hl, fat_buffer
+	inc	hl
+	inc	hl
+	inc	hl
+	inc	hl
+	; Update indexes
+	ld	(fat_mem_index), hl
+	ld	hl, 0x0002
+	ld	(fat_cluster), hl
+	ld	a, 2
+	ld	(fat_index), a
+	ret
+
+;;;;;;;;;;;;
+
+AdvanceCluster2:
+	;; Increment cluster
+	ld	hl, (fat_cluster)
+	inc	hl
+	ld	(fat_cluster), hl
+
+	;; Increment index and figure out if we need to read new sec
+	ld	a, (fat_index)
+	inc	a
+	cp	32	; 32 clusters / sector
+	jr	z, AdvanceCluster_ReadNewSector
+	ld	(fat_index), a
+
+	;; Increment FAT memory index
+	ld	hl, (fat_mem_index)
+	inc	hl
+	inc	hl
+	ld	(fat_mem_index), hl
+
+	ret
+AdvanceCluster_ReadNewSector:
+	;; Read new sector
+	ld	hl, fat_buffer
+	ld	bc, (fat_sector)
+	inc	bc
+	ld	(root_dir_sector), bc
+	ld	d, 0
+	ld	e, 0
+	ld	a, 0x01
+	rst	0x20	; call CF_READ
+
+	;; Reset index and mem_index
+	ld	a, 0
+	ld	(fat_index), a
+	ld	hl, fat_buffer
+	ld	(fat_mem_index), hl
+	ret
+
+;;;;;;;;;;;;
+
+FindFirstAvailCluster:
+	call	ResetFat
+FindFirstAvailCluster_1:
+	ld	hl, (fat_mem_index)
+	ld	a, (hl)
+	inc	hl
+	ld	b, (hl)
+	or	b
+	cp	0
+	ret	z
+	call	AdvanceCluster2
+	jr	FindFirstAvailCluster_1
+
+;;;;;;;;;;;;
+
+SaveFat:
+	ld	hl, fat_buffer
+	ld	bc, (fat_sector)
+	ld	d, 0
+	ld	e, 0
+	ld	a, 1
+	call	CF_WRITE
+	ret
+
+;;;;;;;;;;;;
+
+ResetRootDir:
+	; Read first sector of root dir off disk
+	ld	hl, root_dir_buffer
+	ld	bc, (start_of_root_dir)
+	ld	(root_dir_sector), bc
+ResetRootDirAdvanceDirEntryPoint:
+	ld	d, 0
+	ld	e, 0
+	ld	a, 0x01
+	rst	0x20	; call CF_READ
+	; Update indexes
+	ld	a, 0
+	ld	(root_dir_index), a
+	ld	hl, root_dir_buffer
+	ld	(root_dir_mem_index), hl
+	; Copy first entry into dir_ent_buffer
+	ld	de, dir_entry_buffer
+	ld	bc, 32
+	ldir
+	ret
+
+;;;;;;;;;;;;
+
+AdvanceDirEnt:
+	ld	a, (root_dir_index)
+	inc	a
+	cp	16	; 16 dir entries / sector
+	jr	z, AdvanceDirEnt_ReadNewSector
+	ld	(root_dir_index), a
+	ld	hl, (root_dir_mem_index)
+	ld	bc, 32
+	add	hl, bc
+	ld	(root_dir_mem_index), hl
+	ld	de, dir_entry_buffer
+	ldir
+	ret
+AdvanceDirEnt_ReadNewSector:
+	ld	hl, root_dir_buffer
+	ld	bc, (root_dir_sector)
+	inc	bc
+	ld	(root_dir_sector), bc
+	jr	ResetRootDirAdvanceDirEntryPoint
+
+;;;;;;;;;;;;
+
+FindFirstAvailDirEnt:
+	call	ResetRootDir
+FindFirstAvailDirEnt_1:
+	; Check for LFN entry, and if so skip
+	ld	a, (attribs)
+	cp	0x0F
+	jr	z, FindFirstAvailDirEnt_2
+	; Is this the end of the dir?
+	ld	hl, filename
+	ld	a, (hl)
+	cp	0x00
+	jr	z, FindFirstAvailDirEnt_DirEnd
+	; Is this a free entry?
+	cp	0xE5
+	jr	z, FindFirstAvailDirEnt_Free
+	; Otherwise advance and loop
+FindFirstAvailDirEnt_2:
+	call	AdvanceDirEnt
+	jr	FindFirstAvailDirEnt_1
+FindFirstAvailDirEnt_Free:
+	ld	a, 0x00
+	ret
+FindFirstAvailDirEnt_DirEnd:
+	ld	a, 0xFF
+	ret
+
+;;;;;;;;;;;;
+
+MakeDirEndEntry:
+	ld	a, 0x00
+	ld	(filename), a
+
+;;;;;;;;;;;;
+
+ZeroFilename:
+	ld	hl, filename
+	ld	a," "
+	ld	b, 11
+ZeroFilenameLoop:
+	ld	(hl), a
+	inc	hl
+	djnz	ZeroFilenameLoop
+	ret
+
+;;;;;;;;;;;;
+
+UpdateRootDir:
+	ld	hl, dir_entry_buffer
+	ld	de, (root_dir_mem_index)
+	ld	bc, 32
+	ldir
+	ret
+
+;;;;;;;;;;;;
+
+SaveRootDir:
+	ld	hl, root_dir_buffer
+	ld	bc, (root_dir_sector)
+	ld	d, 0
+	ld	e, 0
+	ld	a, 1
+	call	CF_WRITE
+	ret
+
+;;;;;;;;;;;;
+
+WriteFileStr1:
+	defm	"Looking for empty sector...\r\n\0"
+WriteFileStr2:
+	defm	": I think this is the first empty sector\r\n\0"
+WriteFileStr3:
+	defm	"Now searching for a blank spot in the root dir...\r\n\0"
+WriteFileStr4:
+	defm	"Hitting the disk now...\r\n\0"
+WriteFile:
+	; Write BC bytes from memory, starting at HL, to disk.
+	; Give filename pointed to by DE.
+	ld	(memory_pointer), hl
+	ld	(total_bytes), bc
+	ld	(bytes_remaining), bc
+	ld	(target_filename_ptr), de
+
+	; Find empty sector
+	call	ResetFat
+	call	FindFirstAvailCluster
+	ld	hl, (fat_cluster)
+	ld	(new_file_start_clu), hl
+	; Mark this sector as end of chain
+	ld	hl, (fat_mem_index)
+	ld	a, 0xFF
+	ld	(hl), a
+	inc	hl
+	ld	(hl), a
+	call	SaveFat
+
+	;; Now write a sector
+	ld	hl, (fat_cluster)
+	call	ClusterToSector
+	ld	hl, (memory_pointer)
+	ld	a, 1
+	call	CF_WRITE
+	;; Advance memory pointer
+	ld	de, 512
+	add	hl, de
+	ld	(memory_pointer), hl
+	ld	de, 512
+	ld	hl, (bytes_remaining)
+	or	a ; Clear carry flag before sbc
+	sbc	hl, de
+	jp	pe, WriteFileMakeDent
+	ld	(bytes_remaining), hl
+
+WriteFileMakeDent:
+	call	ResetRootDir
+	call	FindFirstAvailDirEnt
+	push	af
+	call	ZeroFilename
+	;;;;; Copy filename
+	ld	hl, filename
+	ld	de, (target_filename_ptr)
+	ld	b, 8
+WriteNameLoop:
+	ld	a, (de)
+	inc	de
+	cp	0x00
+	jr	z, WriteStartingCluster
+	cp	"."
+	jr	z, WriteExtension
+	ld	(hl), a
+	inc	hl
+	djnz	WriteNameLoop
+WriteExtension:
+	ld	hl, extension
+	ld	b, 3
+WriteExtensionLoop:
+	ld	a, (de)
+	inc	de
+	cp	0x00
+	jr	z, WriteStartingCluster
+	ld	(hl), a
+	inc	hl
+	djnz	WriteExtensionLoop
+WriteStartingCluster:
+	ld	de, (new_file_start_clu)
+	ld	hl, starting_cluster
+	ld	(hl), e
+	inc	hl
+	ld	(hl), d
+	ld	hl, size_in_bytes
+	ld	(hl), 0x00
+	inc	hl
+	ld	(hl), 0x00
+	inc	hl
+	ld	de, (total_bytes)
+	ld	(hl), e
+	inc	hl
+	ld	(hl), d
+	ld	a, 0
+	ld	(attribs), a
+WriteDentToDisk:
+	call	UpdateRootDir
+	call	SaveRootDir
+	pop	af
+	cp	0
+	ret	z
+WriteHandleDirEnd:
+	call	AdvanceDirEnt
+	call	MakeDirEndEntry
+	call	UpdateRootDir
+	call	SaveRootDir
+	ret
