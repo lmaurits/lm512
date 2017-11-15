@@ -54,6 +54,7 @@ datestr:	defm "DATE\0"
 lsstr:		defm "LS\0"
 monstr:		defm "MONITOR\0"
 serloadstr:	defm "SERLOAD\0"
+receivestr:	defm "RECEIVE\0"
 loadstr:	defm "LOAD\0"
 
 ; Table linking command strings to function entry points
@@ -64,6 +65,7 @@ dos_dispatch_table:
 	defw helpstr, DosHelp
 	defw monstr, EnterMonitor
 	defw serloadstr, SerialLoad
+	defw receivestr, Receive
 	defw loadstr, DosLoadFile
 	defw nullstr, ExecFile
 
@@ -317,6 +319,34 @@ SerialLoadStr:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
+; RECEIVE FILE
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+Receive:
+	; Check dos_argc
+	ld		a, (dos_argc)
+	cp		1
+	jr		z, Receive00
+	ld		hl, ReceiveArgcErrorStr
+	call		PrintStringA
+	ret
+ReceiveArgcErrorStr:
+	defm		"RECEIVE expects exactly one arg (8.3 filename)\r\n\0"
+Receive00:
+	;; First download the file
+	ld		hl, 0x8000
+	call		SerialLoadCore
+	;; Now save
+	ld		hl, 0x8000
+	push		de
+	pop		bc
+	ld		de, (dos_argv)
+	call		WriteFile
+	ret
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
 ; LOAD FILE
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -354,6 +384,7 @@ LoadLoopCallback:
 	ld	a, 0xFF
 	ld	(dir_walk_breakout), a
 	ret
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
 ; EXEC FILE
