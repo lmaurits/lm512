@@ -463,14 +463,6 @@ ReadFileLoop:
 
 ;;;;;;;;;;;;
 
-WriteFileStr1:
-	defm	"Looking for empty sector...\r\n\0"
-WriteFileStr2:
-	defm	": I think this is the first empty sector\r\n\0"
-WriteFileStr3:
-	defm	"Now searching for a blank spot in the root dir...\r\n\0"
-WriteFileStr4:
-	defm	"Hitting the disk now...\r\n\0"
 WriteFile:
 	; Write BC bytes from memory, starting at HL, to disk.
 	; Give filename pointed to by DE.
