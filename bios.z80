@@ -100,3 +100,19 @@ IntVector:
 	dw		tickhandler
 	dw		nullhandler
 	dw		diskhandler
+
+Sleep:
+	ld		hl, (uptime)	; Get current uptime
+	ld		d, 0
+	ld		e, a
+	add		hl, de		; Add A seconds to get target
+SleepLoop:
+	ld		de, (uptime)	; Load current
+	ld		a, d		; Check high order
+	cp		h
+	jr		nz, SleepLoop	; No match, keep sleepin
+	ld		a, e		; Check low order
+	cp		l
+	jr		nz, SleepLoop	; No match, keep sleepin
+	; If matched, done
+	ret
