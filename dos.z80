@@ -57,6 +57,7 @@ serloadstr:	defm "SERLOAD\0"
 receivestr:	defm "RECEIVE\0"
 loadstr:	defm "LOAD\0"
 sleepstr:	defm "SLEEP\0"
+uptimestr:	defm "UPTIME\0"
 
 ; Table linking command strings to function entry points
 dos_dispatch_table:
@@ -67,6 +68,7 @@ dos_dispatch_table:
 	defw monstr, EnterMonitor
 	defw serloadstr, SerialLoad
 	defw sleepstr, SleepDos
+	defw uptimestr, Uptime
 	defw receivestr, Receive
 	defw loadstr, DosLoadFile
 	defw nullstr, ExecFile
@@ -455,3 +457,14 @@ SleepDos00:
 	call		Read8bit
 	call		Sleep
 	ret
+
+Uptime:
+	ld		hl, dos_linebuf
+	ld		de, (uptime)
+	ld		a, d
+	call		StrfHex
+	ld		a, e
+	call		StrfHex
+	call		TerminateLine
+	ld		hl, dos_linebuf
+	call		PrintStringA
