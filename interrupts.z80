@@ -1,0 +1,32 @@
+.STAT:		equ CFBASE + 0x07	; Status (R)
+
+nullhandler:
+	reti
+
+diskhandler:
+	di
+	push	af
+	in		a, (.STAT)		; Read disk status
+	pop	af
+	ei
+	reti
+
+tickhandler:
+	di			; Disable interrupts
+	push	af		; Save AF and HL
+	push	hl
+	ld	a, (ticks)	; Load tick count
+	inc	a		; Incrmeent ticks
+	cp	64		; Have we hit 64?
+	jr	nz, tickhandler_1
+	; If we've had 64 ticks, that's 1 second
+	ld	a, 0		; Wrap tick counter
+	ld	hl, uptime	; Increment uptime in seconds
+	inc	(hl)
+tickhandler_1:
+	ld	(ticks), a	; Store tick count
+	in	a, (109)	; Reset RTC int
+	pop	hl		; Restore AF and HL
+	pop	af
+	ei			; Enable interrupts
+	reti

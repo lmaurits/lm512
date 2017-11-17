@@ -1,5 +1,6 @@
 ROMBASE:		equ 0x0000
 RAMBASE:		equ 0x2000
+RAMHI:			equ 0x20
 SYSSTACK:		equ 0x7FFF
 
 ; Below we use defs to define variables in RAM, starting at RAMBASE
@@ -11,6 +12,9 @@ SYSSTACK:		equ 0x7FFF
 ; file than trying to use only "equ"!
 
 org			RAMBASE
+int_vector:		defs 16
+ticks:			defs 1
+uptime:			defs 2
 
 ; Stuff for the inbuilt DOS
 dos_linebuf:		defs 256

@@ -45,9 +45,15 @@ include 'rtc.z80'
 ; Main BIOS entry point
 Main:
 	ld		sp, SYSSTACK
+	ld		a, 0
+	ld		(ticks), a
+	ld		hl, 0x0000
+	ld		(uptime), hl
 	; Initialise hardware
 	call		UartInit
 	call		CfSetup
+	call		RTCSetup
+	call		InterruptSetup
 MainLoop:
 	; Start DOS
 	call		Dos
@@ -60,3 +66,37 @@ UartInit:
 	ld		a, 10100011b
 	call		SERIAL_INIT_B
 	ret
+
+RTCSetup:
+	; Set periodic rate to 500ms
+        ld a, 00001010b
+	out (RTCBASE + 0xB), a
+	; Turn on periodic interrupt
+	ld a, 00000100b
+	out (RTCBASE + 0xC), a
+	ret
+
+InterruptSetup:
+	; Copy interrupt to RAM
+	ld		de, int_vector
+	ld		hl, IntVector
+	ld		bc, 16
+	ldir
+	; Point interrupt vector at interrupt table
+        ld		a, RAMHI
+	ld		i, a
+	; Set interrupt mode 2
+	im 2
+	; Enable interrupts
+	ei
+	ret
+
+IntVector:
+	dw		diskhandler
+	dw		diskhandler
+	dw		nullhandler
+	dw		nullhandler
+	dw		nullhandler
+	dw		tickhandler
+	dw		nullhandler
+	dw		diskhandler
