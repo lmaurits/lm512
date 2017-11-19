@@ -199,7 +199,7 @@ AdvanceCluster_ReadNewSector:
 	ld	hl, fat_buffer
 	ld	bc, (fat_sector)
 	inc	bc
-	ld	(root_dir_sector), bc
+	ld	(fat_sector), bc
 	ld	d, 0
 	ld	e, 0
 	ld	a, 0x01
@@ -216,7 +216,6 @@ AdvanceCluster_ReadNewSector:
 
 FindFirstAvailCluster:
 	call	ResetFat
-FindFirstAvailCluster_1:
 	ld	hl, (fat_mem_index)
 	ld	a, (hl)
 	inc	hl
@@ -224,42 +223,112 @@ FindFirstAvailCluster_1:
 	or	b
 	cp	0
 	ret	z
+	call	FindNextAvailCluster
+
+;;;;;;;;;;;;
+
+FindNextAvailCluster:
 	call	AdvanceCluster
-	jr	FindFirstAvailCluster_1
+	ld	hl, (fat_mem_index)
+	ld	a, (hl)
+	inc	hl
+	ld	b, (hl)
+	or	b
+	cp	0
+	ret	z
+	jr	FindNextAvailCluster
+
+;;;;;;;;;;;;
+
+ChainClusters:
+	;	Chain cluster HL to DE
+	ld	bc, (fat_cluster)	; Back up current cluster
+	push	bc
+	push	de			; Back up dest. cluster
+	call	SeekCluster		; Seek cluster HL
+	pop	de			; Restore dest. cluster
+	ld	hl, (fat_mem_index)	; Set HL to FAT buffer index
+	ld	(hl), e			; Write DE (littleendian)
+	inc	hl
+	ld	(hl), d
+	call	SaveFat			; Save  changes to disk
+	pop	hl			; Get back to where we were
+	call	SeekCluster
+	ret
+
+;;;;;;;;;;;;
+
+TerminateChain:
+	ld	hl, (fat_mem_index)	; Set HL to FAT buffer index
+	ld	(hl), 0xF8		; Write 0xFFF8 (EOF)
+	inc	hl
+	ld	(hl), 0xFF
+	call	SaveFat			; Save  changes to disk
+	ret
+
+;;;;;;;;;;;;
+
+SeekCluster:
+	; jump to cluster in HL
+	ld	(fat_cluster), hl	; Keep target cluster
+	ex	de,hl			; Now cluster is in DE
+	ld	hl, (start_of_fat)
+	ld	e, d			; Set DE to 0D
+	ld	d, 0
+	add	hl, de			; HL is now desired FAT sector
+	ld	(fat_sector), hl
+
+	ld	b, h			; Setup registers for CF_READ
+	ld	c, l
+	ld	d, 0
+	ld	e, 0
+	ld	hl, fat_buffer
+	ld	a, 1
+	rst	0x20	; call CF_READ
+
+	ld	hl, fat_buffer
+	ld	de, (fat_cluster)
+	ld	d, 0			; Set DE to 0E
+	add	hl, de
+	add	hl, de
+	ld	(fat_mem_index), hl
+	ld	a, e
+	ld	(fat_index), a
+
+	ld	hl, (fat_cluster)	; Don't clobber HL
+	ret
+
+;;;;;;;;;;;;
+
+TestEOF:
+	; Set Zero flag if current cluster value is 0xFFF8 - 0xFFFF
+	; Clear Zero flag if not
+	ld	hl, (fat_mem_index)	; Get pointer to current cluster
+	ld	e, (hl)			; Read next cluster into DE
+	inc	hl
+	ld	d, (hl)
+	ld	a, 0xFF
+	cp	d
+	ret	nz			; If D != 0xFF, this ain't EOF
+	; We're EOF if E is 0xF8, 0xF9, 0xFA, ..., 0xFF.
+	; In other words, if the first 5 bits of E are set
+	; So let's set the last 3 bits to 1 and then test
+	; against 0xFF
+	ld	a, e
+	or	00000111b
+	cp	0xFF
+	ret
 
 ;;;;;;;;;;;;
 
 FollowClusterChain:
 	; Sector we want is start_of_fat + high order byte of current cluster
-	ld	hl, (start_of_fat)
-	ld	bc, (current_cluster)
-	ld	c, b
-	ld	b, 0
-	add	hl, bc
-	; Read that sector of the fat
-	ld	b, h
-	ld	c, l
-	ld	d, 0
-	ld	e, 0
-	ld	hl, fat_sector_buffer
-	ld	a, 1
-	rst	0x20	; call CF_READ
-	; Offset into the sector we want is the low order byte of curent cluster
-	ld	hl, fat_sector_buffer
-	ld	bc, (current_cluster)
-	ld	b, 0
-	add	hl, bc
-	add	hl, bc
-	; Read FAT entry into BC
-	ld	c, (hl)
+	ld	hl, (fat_mem_index)	; Get pointer to current cluster
+	ld	e, (hl)			; Read next cluster into DE
 	inc	hl
-	ld	b, (hl)
-	ld	(current_cluster), bc
-	; Check if we're done
-	ld	hl, (current_cluster)
-	ld	bc, 0xFFF8
-	or	a			; Clear carry flag
-	sbc	hl, bc
+	ld	d, (hl)
+	ex	de, hl
+	call	SeekCluster
 	ret
 
 ;;;;;;;;;;;;
@@ -446,65 +515,77 @@ ReadFile:
 	; into memory at the location pointed to by HL
 	ld	(memory_pointer), hl
 	ld	hl, (starting_cluster)
-	ld	(current_cluster), hl
+	call	SeekCluster
 ReadFileLoop:
 	; Convert current_cluster to sector in b,c,d,e
+	ld	hl, (fat_cluster)
 	call	ClusterToSector
 	; Read one sector
 	ld	hl, (memory_pointer)
 	ld	a, 0x01
 	rst	0x20	; call CF_READ
 	ld	(memory_pointer), hl
-	; Get next cluster
+	; Is there another cluster?
+	call	TestEOF
+	ret	z
+	; Move to next cluster and loop
 	call	FollowClusterChain
-	; Check to see if done
-	jr	c, ReadFileLoop
-	ret
+	jr	ReadFileLoop
 
 ;;;;;;;;;;;;
 
 WriteFile:
 	; Write BC bytes from memory, starting at HL, to disk.
 	; Give filename pointed to by DE.
+
+	; First, save params to memory
 	ld	(memory_pointer), hl
 	ld	(total_bytes), bc
 	ld	(bytes_remaining), bc
 	ld	(target_filename_ptr), de
 
-	; Find empty sector
-	call	ResetFat
+	; Now, find an empty sector to start the chain
+	; and remember it
 	call	FindFirstAvailCluster
 	ld	hl, (fat_cluster)
 	ld	(new_file_start_clu), hl
-	; Mark this sector as end of chain
-	ld	hl, (fat_mem_index)
-	ld	a, 0xFF
-	ld	(hl), a
-	inc	hl
-	ld	(hl), a
-	call	SaveFat
 
-	;; Now write a sector
+	; Now write all the sectors in the chain
+WriteFileWriteSector:
+	;; Write a sector
 	ld	hl, (fat_cluster)
 	call	ClusterToSector
 	ld	hl, (memory_pointer)
 	ld	a, 1
 	call	CF_WRITE
-	;; Advance memory pointer
-	ld	de, 512
-	add	hl, de
+	;; Save memory pointer
 	ld	(memory_pointer), hl
-	ld	de, 512
+	;; Figure out if we're done or need another sector
 	ld	hl, (bytes_remaining)
+	ld	de, 512
 	or	a ; Clear carry flag before sbc
 	sbc	hl, de
-	jp	pe, WriteFileMakeDent
+	;; If that sbc went negative, we're done
+	jr	c, WriteFileEndChain
+	;; If not, we need to allocate another sector in the chain
 	ld	(bytes_remaining), hl
 
-WriteFileMakeDent:
+	ld	hl, (fat_cluster)
+	push	hl
+	call	FindNextAvailCluster
+	pop	hl
+	ld	de, (fat_cluster)
+	call	ChainClusters
+	jr	WriteFileWriteSector
+WriteFileEndChain:
+	call	TerminateChain
+
+	; Now add the corresponding directory entry
 	call	ResetRootDir
 	call	FindFirstAvailDirEnt
-	push	af
+	push	af		; Store A, which tells us whether
+				; or not we need to add a new
+				; dir end marker
 	call	ZeroFilename
 	;;;;; Copy filename
 	ld	hl, filename
@@ -550,26 +631,30 @@ WriteExtensionLoop:
 	inc	hl
 	djnz	WriteExtensionLoop
 WriteStartingCluster:
+	; Starting cluster
 	ld	de, (new_file_start_clu)
 	ld	hl, starting_cluster
 	ld	(hl), e
 	inc	hl
 	ld	(hl), d
-	ld	hl, size_in_bytes
-	ld	(hl), 0x00
-	inc	hl
-	ld	(hl), 0x00
-	inc	hl
+	; Total size
 	ld	de, (total_bytes)
+	ld	hl, size_in_bytes
 	ld	(hl), e
 	inc	hl
 	ld	(hl), d
+	inc	hl
+	ld	(hl), 0x00
+	inc	hl
+	ld	(hl), 0x00
+	; Attribs
 	ld	a, 0
 	ld	(attribs), a
 WriteDentToDisk:
 	call	UpdateRootDir
 	call	SaveRootDir
-	pop	af
+	pop	af		; Restore A, which flags whether
+				; or not we need to write a dir end
 	cp	0
 	ret	z
 WriteHandleDirEnd:
