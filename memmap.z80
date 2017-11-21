@@ -31,7 +31,6 @@ mon_reg_stack:		defs 2
 ; Stuff for the FAT driver
 fat_sector_buffer:	defs 512	
 fat_buffer_index:	defs 2
-filename_buffer:	defs 16
 ; FAT specs table ;;;;;;;;;;;
 
 partition_start_sec:	defs 4
@@ -84,6 +83,7 @@ memory_pointer:		defs 2
 bytes_remaining:	defs 2
 total_bytes:		defs 2
 new_file_start_clu:	defs 2
+filename_buffer:	defs 16
 ; Scratch stuff ;;;;;;;;;;;;;;
 target_filename_ptr:	defs 2
 need_to_add_dir_end:	defs 1
