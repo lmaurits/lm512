@@ -233,8 +233,13 @@ DosHelp:
 	dos_helpmessage:	defm "LM-512 DOS commands:\n\r"
 	defm "CFBOOT: Read MBR from CF card to RAM and execute.\n\r"
 	defm "DATE: Print current date and time.\n\r"
+	defm "LS: List directory contents.\n\r"
 	defm "MONITOR: Enter machine code monitore.\n\r"
+	defm "MV: Move (rename) file.\n\r"
+	defm "RECEIVE FILENAME: Read data from serial port 2 and saveto FILENAME.\n\r"
 	defm "SERLOAD ADR: Read data from serial port 2 to address ADR.\n\r"
+	defm "SLEEP SEC: Sleep for SEC seconds.\n\r"
+	defm "UPTIME: Print system uptime in seconds.\n\r"
 	defm "\0"
 	
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
