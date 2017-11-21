@@ -376,7 +376,7 @@ Mv00:
 	ld	(dir_walk_loop_callback), hl
 	ld	hl, RenameCallback
 	ld	(dir_walk_break_callback), hl
-	ld	hl, ExecEndCallback
+	ld	hl, BadFileCallback
 	ld	(dir_walk_end_callback), hl
 	call	WalkRootDir
 	ret
@@ -408,6 +408,13 @@ RenameCallback:
 	call	SaveRootDir
 	ret
 
+BadFileCallback:
+	ld	hl, BadFileMsg
+	call	PrintStringA
+	ret
+BadFileMsg:
+	defm	"Bad command or filename.\r\n\0"
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
 ; LOAD FILE
@@ -423,29 +430,20 @@ LoadFile:
 	; HL points to a filename we want to load
 	; Save it for later
 	ld	(target_filename_ptr), hl
-	ld	hl, LoadLoopCallback
+	ld	hl, MatchFilenameCallback
 	ld	(dir_walk_loop_callback), hl
-	ld	hl, NullCallback
+	ld	hl, LoadCallback
 	ld	(dir_walk_break_callback), hl
-	ld	hl, ExecEndCallback
+	ld	hl, BadFileCallback
 	ld	(dir_walk_end_callback), hl
 	call	WalkRootDir
 	ret
 
-LoadLoopCallback:
-	call	BuildFilenameString
-	ld	(hl), "\0"		; BuildFilenameString doesn't terminate!
-	ld	hl, filename_buffer
-	ld	de, (target_filename_ptr)
-	call	StrictStrCmp
-	ret	nz
+LoadCallback:
 	; At this point, we've matched
 	; Read the file into memory
 	ld	hl, 0x8000
 	call	ReadFile
-	; Let the directory walker know we can break out of the loop
-	ld	a, 0xFF
-	ld	(dir_walk_breakout), a
 	ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -456,47 +454,15 @@ LoadLoopCallback:
 
 ExecFile:
 	ld		hl, dos_linebuf
-	call		ExecuteFile
+	call		LoadFile
+	call		0x8000		; Execute the loaded file
 	ret
 
-ExecuteFile:
-	; HL points to a filename we want to execute
-	; Save it for later
-	ld	(target_filename_ptr), hl
-	ld	hl, ExecLoopCallback
-	ld	(dir_walk_loop_callback), hl
-	ld	hl, NullCallback
-	ld	(dir_walk_break_callback), hl
-	ld	hl, ExecEndCallback
-	ld	(dir_walk_end_callback), hl
-	call	WalkRootDir
-	ret
-
-ExecLoopCallback:
-	call	BuildFilenameString
-	ld	(hl), "\0"		; BuildFilenameString doesn't terminate!
-	ld	hl, filename_buffer
-	ld	de, (target_filename_ptr)
-	call	StrictStrCmp
-	ret	nz
-	; At this point, we've matched
-	; Read the file into memory
-	ld	hl, 0x8000
-	call	ReadFile
-	; Execute the file
-	call	0x8000
-	; Let the directory walker know we can break out of the loop
-	ld	a, 0xFF
-	ld	(dir_walk_breakout), a
-	ret
-
-ExecEndCallback:
-	ld	hl, ExecuteFileFailMsg
-	call	PrintStringA
-	ret
-ExecuteFileFailMsg:
-	defm	"Bad command or filename.\r\n\0"
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; TIMING STUFF
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 SleepDos:
 	ld		a, (dos_argc)
