@@ -499,6 +499,7 @@ ExecFile:
 	ld	hl, BadFileCallback
 	ld	(dir_walk_end_callback), hl
 	call	WalkRootDir
+	ret
 
 ExecCallback:
 	; At this point, we've matched
