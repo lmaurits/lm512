@@ -459,8 +459,23 @@ LoadCallback:
 
 ExecFile:
 	ld		hl, dos_linebuf
-	call		LoadFile
-	call		0x8000		; Execute the loaded file
+	; HL points to a filename we want to load
+	; Save it for later
+	ld	(target_filename_ptr), hl
+	ld	hl, MatchFilenameCallback
+	ld	(dir_walk_loop_callback), hl
+	ld	hl, ExecCallback
+	ld	(dir_walk_break_callback), hl
+	ld	hl, BadFileCallback
+	ld	(dir_walk_end_callback), hl
+	call	WalkRootDir
+
+ExecCallback:
+	; At this point, we've matched
+	; Read the file into memory
+	ld	hl, 0x8000
+	call	ReadFile
+	call	0x8000		; Execute the loaded file
 	ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
