@@ -456,7 +456,10 @@ ZeroFilenameLoop:
 ;;;;;;;;;;;;
 
 BuildFilenameString:
-
+	; This populates filename_buffer with a human friendly
+	; version of the filename of the current dir entry.
+	; i.e. it removes padding from the filename, puts a
+	; period before extension and a slash after directories.
 	ld	hl, filename
 	ld	de, filename_buffer	; DE at filename, HL at dir entry
 	ld	bc, 8			; Copy 8 chars to filename buffer
@@ -483,6 +486,56 @@ BuildFilenameStringAddDirSlash:
 	inc	hl
 BuildFilenameEnd:
 	ret
+
+;;;;;;;;;;;;
+
+ReverseBuildFilenameString:
+	; This is the reverse of BuildFilenameString
+	call	ZeroFilename
+	;;;;; Copy filename
+	ld	hl, filename
+	ld	de, filename_buffer
+	ld	b, 8
+FooWriteNameLoop:
+	ld	a, (de)
+	inc	de
+	; If we've hit the end of the string at this point,
+	; there is no extension, so we're done with filename
+	; wrangling.
+	cp	0x00
+	ret	z
+	; If we've encountered a period, we're done with the
+	; filename proper and need to handle the extension
+	cp	"."
+	jr	z, FooWriteExtension
+	; Otherwise, we can add this char to the filename and
+	; then see if we've hit the 8 char limit
+	ld	(hl), a
+	inc	hl
+	djnz	FooWriteNameLoop
+	; At this point we've copied 8 chars.  If we're now
+	; pointing at a period, we need to jump over it and then
+	; handle the extension
+	ld	a, (de)
+	cp	"."
+	jr	z, FooSkipPeriod
+	; If we're pointing at anything else here, truncate the
+	; string and we're done.
+	ret
+FooSkipPeriod:
+	inc	de
+FooWriteExtension:
+	ld	hl, extension
+	ld	b, 3
+FooWriteExtensionLoop:
+	ld	a, (de)
+	inc	de
+	cp	0x00
+	ret	z
+	ld	(hl), a
+	inc	hl
+	djnz	FooWriteExtensionLoop
+
 
 ;;;;;;;;;;;;
 

@@ -53,6 +53,7 @@ cfbootstr:	defm "CFBOOT\0"
 datestr:	defm "DATE\0"
 lsstr:		defm "LS\0"
 monstr:		defm "MONITOR\0"
+mvstr:		defm "MV\0"
 serloadstr:	defm "SERLOAD\0"
 receivestr:	defm "RECEIVE\0"
 loadstr:	defm "LOAD\0"
@@ -66,6 +67,7 @@ dos_dispatch_table:
 	defw lsstr, Ls
 	defw helpstr, DosHelp
 	defw monstr, EnterMonitor
+	defw mvstr, Mv
 	defw serloadstr, SerialLoad
 	defw sleepstr, SleepDos
 	defw uptimestr, Uptime
@@ -347,6 +349,63 @@ Receive00:
 	pop		bc
 	ld		de, (dos_argv)
 	call		WriteFile
+	ret
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; RENAME FILE (MV)
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+Mv:
+	; Check dos_argc
+	ld		a, (dos_argc)
+	cp		2
+	jr		z, Mv00
+	ld		hl, MvArgcErrorStr
+	call		PrintStringA
+	ret
+MvArgcErrorStr:
+	defm		"MV expects exactly two args (both 8.3 filenames)\r\n\0"
+Mv00:
+	; HL points to a filename we want to rename
+	ld	hl, (dos_argv)
+	ld	(target_filename_ptr), hl
+	; Setup to walk root dir
+	ld	hl, MatchFilenameCallback
+	ld	(dir_walk_loop_callback), hl
+	ld	hl, RenameCallback
+	ld	(dir_walk_break_callback), hl
+	ld	hl, ExecEndCallback
+	ld	(dir_walk_end_callback), hl
+	call	WalkRootDir
+	ret
+
+MatchFilenameCallback:
+	call	BuildFilenameString
+	ld	(hl), "\0"		; BuildFilenameString doesn't terminate!
+	ld	hl, filename_buffer
+	ld	de, (target_filename_ptr)
+	call	StrictStrCmp
+	ret	nz
+	; At this point, we've matched
+	; Let the directory walker know we can break out of the loop
+	ld	a, 0xFF
+	ld	(dir_walk_breakout), a
+	ret
+
+RenameCallback:
+	; Dent *should* now be pointed at our target
+	; Copy the new name into the filename buffer
+	ld	hl, (dos_argv+2)
+	ld	de, filename_buffer
+	ld	bc, 16
+	ldir
+	; Overwrite the filename in the dent buffer
+	call	ReverseBuildFilenameString
+	; Save new dent to disk
+	call	UpdateRootDir
+	call	SaveRootDir
 	ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
