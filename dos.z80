@@ -460,8 +460,6 @@ Cp00:
 
 DosLoadFile:
 	ld		hl, (dos_argv)
-	call		LoadFile
-	ret
 
 LoadFile:
 	; HL points to a filename we want to load
