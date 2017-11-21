@@ -50,6 +50,7 @@ DosHandleLine:
 ; Command strings
 
 cfbootstr:	defm "CFBOOT\0"
+cpstr:		defm "CP\0"
 datestr:	defm "DATE\0"
 lsstr:		defm "LS\0"
 monstr:		defm "MONITOR\0"
@@ -63,6 +64,7 @@ uptimestr:	defm "UPTIME\0"
 ; Table linking command strings to function entry points
 dos_dispatch_table:
 	defw cfbootstr, CfBoot
+	defw cpstr, Cp
 	defw datestr, Date
 	defw lsstr, Ls
 	defw helpstr, DosHelp
@@ -232,6 +234,7 @@ DosHelp:
 	ret
 	dos_helpmessage:	defm "LM-512 DOS commands:\n\r"
 	defm "CFBOOT: Read MBR from CF card to RAM and execute.\n\r"
+	defm "CP: Copy file.\n\r"
 	defm "DATE: Print current date and time.\n\r"
 	defm "LS: List directory contents.\n\r"
 	defm "MONITOR: Enter machine code monitore.\n\r"
@@ -419,6 +422,35 @@ BadFileCallback:
 	ret
 BadFileMsg:
 	defm	"Bad command or filename.\r\n\0"
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; COPY FILE (CP)
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+Cp:
+	; Check dos_argc
+	ld		a, (dos_argc)
+	cp		2
+	jr		z, Cp00
+	ld		hl, CpArgcErrorStr
+	call		PrintStringA
+	ret
+CpArgcErrorStr:
+	defm		"Cp expects exactly two args (both 8.3 filenames)\r\n\0"
+Cp00:
+	ld	hl, (dos_argv)
+	rst	0x30
+	call	LoadFile
+	rst	0x30
+	ld	hl, 0x8000
+	ld	de, (dos_argv+2)
+	ld	bc, (size_in_bytes)
+	rst	0x30
+	call	WriteFile
+	rst	0x30
+	ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
