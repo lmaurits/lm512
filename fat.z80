@@ -440,6 +440,7 @@ FindFirstAvailDirEnt_DirEnd:
 MakeDirEndEntry:
 	ld	a, 0x00
 	ld	(filename), a
+	ret
 
 ;;;;;;;;;;;;
 
