@@ -57,6 +57,7 @@ monstr:		defm "MONITOR\0"
 mvstr:		defm "MV\0"
 serloadstr:	defm "SERLOAD\0"
 receivestr:	defm "RECEIVE\0"
+rmstr:		defm "RM\0"
 loadstr:	defm "LOAD\0"
 sleepstr:	defm "SLEEP\0"
 uptimestr:	defm "UPTIME\0"
@@ -74,6 +75,7 @@ dos_dispatch_table:
 	defw sleepstr, SleepDos
 	defw uptimestr, Uptime
 	defw receivestr, Receive
+	defw rmstr, Rm
 	defw loadstr, DosLoadFile
 	defw nullstr, ExecFile
 
@@ -240,6 +242,7 @@ DosHelp:
 	defm "MONITOR: Enter machine code monitore.\n\r"
 	defm "MV: Move (rename) file.\n\r"
 	defm "RECEIVE FILENAME: Read data from serial port 2 and saveto FILENAME.\n\r"
+	defm "RM: remove file.\n\r"
 	defm "SERLOAD ADR: Read data from serial port 2 to address ADR.\n\r"
 	defm "SLEEP SEC: Sleep for SEC seconds.\n\r"
 	defm "UPTIME: Print system uptime in seconds.\n\r"
@@ -422,6 +425,56 @@ BadFileCallback:
 	ret
 BadFileMsg:
 	defm	"Bad command or filename.\r\n\0"
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; REMOVE FILE (RM)
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+Rm:
+	ld	hl, (dos_argv)
+	ld	(target_filename_ptr), hl
+
+	ld	hl, MatchFilenameCallback
+	ld	(dir_walk_loop_callback), hl
+	ld	hl, RmCallback
+	ld	(dir_walk_break_callback), hl
+	ld	hl, BadFileCallback
+	ld	(dir_walk_end_callback), hl
+	call	WalkRootDir
+	ret
+
+RmCallback:
+	; First, remove the directory entry
+	call	MakeAvailEntry
+	call	UpdateRootDir
+	call	SaveRootDir
+	; Now free up the blocks in the FAT
+	ld	hl, (starting_cluster)
+	call	SeekCluster
+RmLoop:
+	call	TestEOF
+	push	af			; Preserve results of EOF test
+	ld	hl, (fat_mem_index)	; Get pointer to current cluster
+	ld	e, (hl)			; Read next cluster into DE
+	inc	hl
+	ld	d, (hl)
+	push	de
+	;; Mark this cluster free
+	ld	hl, (fat_mem_index)
+	ld	a, 0x00
+	ld	(hl), a
+	inc	hl
+	ld	(hl), a
+	call	SaveFat
+	;; Get next cluster back in HL
+	pop	hl
+	pop	AF			; Restore results of EOF test
+	ret	z			; If this was the last cluster, return
+	call	SeekCluster		; Otherwise, jump to the next
+	jr	nz,RmLoop
+	ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;

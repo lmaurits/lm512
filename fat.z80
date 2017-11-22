@@ -444,6 +444,13 @@ MakeDirEndEntry:
 
 ;;;;;;;;;;;;
 
+MakeAvailEntry:
+	ld	a, 0xE5
+	ld	(filename), a
+	ret
+
+;;;;;;;;;;;;
+
 ZeroFilename:
 	ld	hl, filename
 	ld	a," "
