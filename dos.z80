@@ -441,15 +441,11 @@ CpArgcErrorStr:
 	defm		"Cp expects exactly two args (both 8.3 filenames)\r\n\0"
 Cp00:
 	ld	hl, (dos_argv)
-	rst	0x30
 	call	LoadFile
-	rst	0x30
 	ld	hl, 0x8000
 	ld	de, (dos_argv+2)
 	ld	bc, (size_in_bytes)
-	rst	0x30
 	call	WriteFile
-	rst	0x30
 	ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
