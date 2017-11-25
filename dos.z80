@@ -424,13 +424,16 @@ Receive:
 	; Check dos_argc
 	ld		a, (dos_argc)
 	cp		1
-	jr		z, Receive00
+	jr		z, ReceiveValidate
 	ld		hl, ReceiveArgcErrorStr
 	call		PrintStringA
 	ret
 ReceiveArgcErrorStr:
 	defm		"RECEIVE expects exactly one arg (8.3 filename)\r\n\0"
-Receive00:
+ReceiveValidate:
+	ld		hl, (dos_argv)
+	call		ValidateFilename
+	ret		nz
 	;; First download the file
 	ld		hl, 0x8000
 	call		SerialLoadCore
@@ -459,6 +462,12 @@ Mv:
 MvArgcErrorStr:
 	defm		"MV expects exactly two args (both 8.3 filenames)\r\n\0"
 Mv00:
+	ld		hl, (dos_argv)
+	call		ValidateFilename
+	ret		nz
+	ld		hl, (dos_argv+2)
+	call		ValidateFilename
+	ret		nz
 	; HL points to a filename we want to rename
 	ld	hl, (dos_argv)
 	ld	(target_filename_ptr), hl
@@ -513,9 +522,20 @@ BadFileMsg:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 Rm:
+	; Check dos_argc
+	ld		a, (dos_argc)
+	cp		1
+	jr		z, RmValidate
+	ld		hl, RmArgcErrorStr
+	call		PrintStringA
+	ret
+RmArgcErrorStr:
+	defm		"RM expects exactly one arg (filename)\r\n\0"
+RmValidate:
 	ld	hl, (dos_argv)
 	ld	(target_filename_ptr), hl
-
+	call		ValidateFilename
+	ret		nz
 	ld	hl, MatchFilenameCallback
 	ld	(dir_walk_loop_callback), hl
 	ld	hl, RmCallback
@@ -571,8 +591,14 @@ Cp:
 	call		PrintStringA
 	ret
 CpArgcErrorStr:
-	defm		"Cp expects exactly two args (both 8.3 filenames)\r\n\0"
+	defm		"CP expects exactly two args (both 8.3 filenames)\r\n\0"
 Cp00:
+	ld		hl, (dos_argv)
+	call		ValidateFilename
+	ret		nz
+	ld		hl, (dos_argv+2)
+	call		ValidateFilename
+	ret		nz
 	ld	hl, (dos_argv)
 	call	LoadFile
 	ld	hl, 0x8000

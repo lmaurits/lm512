@@ -132,3 +132,72 @@ ValidateSectorError:
 	ret
 SectorErrorStr:
 	defm		" is not a valid sector.  Use 8 digit hex, 00000000 to 100000.\r\n\0"
+
+ValidateFilename:
+	push		hl
+	; Must be less than 13 chars
+	call		StrLen
+	cp		13
+	jr		nc, ValidateFilenameTooLong
+	; Must have only one period
+	pop		hl
+	push		hl
+	ld		d, 0
+ValidateFilenameCountPeriodLoop:
+	ld		a, (hl)
+	inc		hl
+	cp		"."
+	jr		z, ValidateFilenameCountPeriod
+	cp		"\0"
+	jr		z, ValidateFilenameCountPeriodEnd
+	jr		ValidateFilenameCountPeriodLoop
+ValidateFilenameCountPeriod:
+	inc		d
+	jr		ValidateFilenameCountPeriodLoop
+ValidateFilenameCountPeriodEnd:
+	; d now contains period count
+	ld		a, d
+	cp		2
+	jr		nc, ValidateFilenameTooManyPeriods
+	cp		0
+	jr		z, ValidateFilenameAllGood
+	; Extension must be 3 chars or less
+	; If we're here we *know* there is a period
+	pop		hl
+	push		hl
+	ld		a, "."
+	ld		bc, 12
+	cpir
+	; Now we've advanced to the first char after the period.
+	call		StrLen
+	cp		4
+	jr		nc, ValidateFilenameExtTooLong
+ValidateFilenameAllGood:
+	; All good!
+	pop		hl	; Get rid of filename pointer
+	cp		a	; Set zero flag
+	ret
+ValidateFilenameTooLong:
+	pop		hl	; Get rid of filename pointer
+	ld		hl, FilenameTooLongStr
+	call		PrintStringA
+	or		1	; Reset zero flag
+	ret
+FilenameTooLongStr:
+	defm		"Filename too long (must be 8.3)\r\n\0"
+ValidateFilenameTooManyPeriods:
+	pop		hl	; Get rid of filename pointer
+	ld		hl, FilenameTooManyStr
+	call		PrintStringA
+	or		1	; Reset zero flag
+	ret
+FilenameTooManyStr:
+	defm		"Filename must not contain more than 1 period.\r\n\0"
+ValidateFilenameExtTooLong:
+	pop		hl	; Get rid of filename pointer
+	ld		hl, FilenameExtTooLongStr
+	call		PrintStringA
+	or		1	; Reset zero flag
+	ret
+FilenameExtTooLongStr:
+	defm		"File extension too long (3 char max)\r\n\0"
