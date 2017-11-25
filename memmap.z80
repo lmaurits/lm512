@@ -15,6 +15,7 @@ org			RAMBASE
 int_vector:		defs 16
 ticks:			defs 1
 uptime:			defs 2
+message_buffer:		defs 80
 
 ; Stuff for the inbuilt DOS
 dos_linebuf:		defs 256
@@ -87,6 +88,10 @@ filename_buffer:	defs 16
 ; Scratch stuff ;;;;;;;;;;;;;;
 target_filename_ptr:	defs 2
 need_to_add_dir_end:	defs 1
+
+; Ls vars
+file_count:		defs 2
+total_size:		defs 4
 
 ; Directory walker config
 dir_walk_breakout:	defs 1

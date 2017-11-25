@@ -210,24 +210,104 @@ WriteComponent:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 Ls:
-	call ListRootDir
-	ret
-
-ListRootDir:
-	ld	hl, ListLoopCallback
+	ld	hl,0x0000
+	ld	(file_count), hl
+	ld	(total_size), hl
+	ld	(total_size+2), hl
+	ld	hl, LsLoopCallback
 	ld	(dir_walk_loop_callback), hl
 	ld	hl, NullCallback
 	ld	(dir_walk_break_callback), hl
+	ld	hl, LsEndCallback
 	ld	(dir_walk_end_callback), hl
 	call	WalkRootDir
 	ret
 
-ListLoopCallback:
-	call	BuildFilenameString
-	call	TerminateLine
+LsLoopCallback:
+	ld	hl, (file_count)
+	inc	hl
+	ld	(file_count), hl
+	ld	hl, (total_size)
+	ld	de, (size_in_bytes)
+	add	hl, de
+	ld	(total_size), hl
+	ld	hl, (total_size+2)
+	ld	de, 0
+	adc	hl, de
+	ld	(total_size+2), hl
 	ld	hl, filename_buffer
+	ld	a, " "
+	ld	b, 12
+LsBlankingLoop:
+	ld	(hl), a
+	inc	hl
+	djnz	LsBlankingLoop
+	call	BuildFilenameString
+	ld	hl, filename_buffer
+	ld	de, message_buffer
+	ld	bc, 12
+	ldir
+	ex	de,hl
+	ld	(hl), "\t"
+	inc	hl
+	ld	(hl), "\t"
+	inc	hl
+	ld	de, (size_in_bytes)
+	ld		a, d
+	call		StrfHex
+	ld		a, e
+	call		StrfHex
+	ld	(hl), "\0"
+	ld	hl, message_buffer
+	call	PrintStringA
+	ld	hl, BytesStr
 	call	PrintStringA
 	ret
+
+LsEndCallback:
+	ld	hl, TotalStr
+	call	PrintStringA
+	ld	hl, message_buffer
+	ld	de, (file_count)
+	ld		a, d
+	call		StrfHex
+	ld		a, e
+	call		StrfHex
+	ld	(hl), "\0"
+	ld	hl, message_buffer
+	call	PrintStringA
+	ld	hl, FilesStr
+	call	PrintStringA
+
+	ld	hl, BytesLeadStr
+	call	PrintStringA
+	ld	hl, message_buffer
+	ld	de, (total_size+2)
+	ld		a, d
+	call		StrfHex
+	ld		a, e
+	call		StrfHex
+	ld	de, (total_size)
+	ld		a, d
+	call		StrfHex
+	ld		a, e
+	call		StrfHex
+	ld	(hl), "\0"
+	ld	hl, message_buffer
+	call	PrintStringA
+	ld	hl, BytesStr
+	call	PrintStringA
+	ret
+
+TotalStr:
+	defm	"\nTotal:\t\t\t\0"
+FilesStr:
+	defm	" files\r\n\0"
+BytesLeadStr:
+	defm	"\t\t\t\0"
+BytesStr:
+	defm	" bytes\r\n\0"
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 DosHelp:
