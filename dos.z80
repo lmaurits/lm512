@@ -57,6 +57,7 @@ monstr:		defm "MONITOR\0"
 mvstr:		defm "MV\0"
 serloadstr:	defm "SERLOAD\0"
 receivestr:	defm "RECEIVE\0"
+resetstr:	defm "RESET\0"
 rmstr:		defm "RM\0"
 loadstr:	defm "LOAD\0"
 sleepstr:	defm "SLEEP\0"
@@ -75,6 +76,7 @@ dos_dispatch_table:
 	defw sleepstr, SleepDos
 	defw uptimestr, Uptime
 	defw receivestr, Receive
+	defw resetstr, Reset
 	defw rmstr, Rm
 	defw loadstr, DosLoadFile
 	defw nullstr, ExecFile
@@ -322,6 +324,7 @@ DosHelp:
 	defm "MONITOR: Enter machine code monitore.\n\r"
 	defm "MV: Move (rename) file.\n\r"
 	defm "RECEIVE FILENAME: Read data from serial port 2 and saveto FILENAME.\n\r"
+	defm "RESET: Reset system.\n\r"
 	defm "RM: remove file.\n\r"
 	defm "SERLOAD ADR: Read data from serial port 2 to address ADR.\n\r"
 	defm "SLEEP SEC: Sleep for SEC seconds.\n\r"
@@ -444,6 +447,15 @@ ReceiveValidate:
 	ld		de, (dos_argv)
 	call		WriteFile
 	ret
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; RESET
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+Reset:
+	jp		0x0000
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
