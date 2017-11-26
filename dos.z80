@@ -13,9 +13,26 @@ Dos:
 	call PrintStringA
 	; Initialise filesystem
 	call		InitFAT
+	; Check for AUTOEXEC.BAT
+	call		DosAutoExec
 	; Start processing commands
 	jp DosLoop
 	welcomestr: defm "Welcome to LM-512 microcomputer system.\n\r\0"
+
+DosAutoExec:
+	ld	hl, DosAutoExecStr
+	ld	(target_filename_ptr), hl
+	ld	hl, MatchFilenameCallback
+	ld	(dir_walk_loop_callback), hl
+	ld	hl, BatchCallback
+	ld	(dir_walk_break_callback), hl
+	ld	hl, NullCallback
+	ld	(dir_walk_end_callback), hl
+	call	WalkRootDir
+	ret
+DosAutoExecStr:
+	defm		"AUTOEXEC.BAT\0"
+
 DosLoop:
 ; Infinite loop of read, parse, dispatch
 	ld		hl, dos_promptstr
