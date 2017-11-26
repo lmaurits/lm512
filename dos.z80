@@ -50,7 +50,6 @@ DosHandleLine:
 ; Command strings
 
 batchstr:	defm "BATCH\0"
-cfbootstr:	defm "CFBOOT\0"
 cpstr:		defm "CP\0"
 datestr:	defm "DATE\0"
 lsstr:		defm "LS\0"
@@ -68,7 +67,6 @@ uptimestr:	defm "UPTIME\0"
 ; Table linking command strings to function entry points
 dos_dispatch_table:
 	defw batchstr, Batch
-	defw cfbootstr, CfBoot
 	defw cpstr, Cp
 	defw datestr, Date
 	defw lsstr, Ls
@@ -153,23 +151,6 @@ BatchLoop:
 	jr	nz, BatchLoop
 	ret
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-CfBoot:
-	; Set LBA address to start of disk
-	ld		b, 0
-	ld		c, 0
-	ld		d, 0
-	ld		e, 0
-	; Read one sector
-	ld		a, 1
-	; Load to start of RAM
-	ld		hl, RAMBASE
-	; Do Cf transfer
-	call		CF_READ
-	; Execute
-	jp		RAMBASE
-	
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 Date:
@@ -386,7 +367,6 @@ DosHelp:
 	ret
 	dos_helpmessage:	defm "LM-512 DOS commands:\n\r"
 	defm "BATCH: Execute commands from text file.\n\r"
-	defm "CFBOOT: Read MBR from CF card to RAM and execute.\n\r"
 	defm "CP: Copy file.\n\r"
 	defm "DATE: Print current date and time.\n\r"
 	defm "LS: List directory contents.\n\r"
