@@ -89,6 +89,10 @@ filename_buffer:	defs 16
 target_filename_ptr:	defs 2
 need_to_add_dir_end:	defs 1
 
+; Batch stuff
+line_start:		defs 2
+line_end:		defs 2
+
 ; Ls vars
 file_count:		defs 2
 total_size:		defs 4

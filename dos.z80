@@ -49,6 +49,7 @@ DosHandleLine:
 
 ; Command strings
 
+batchstr:	defm "BATCH\0"
 cfbootstr:	defm "CFBOOT\0"
 cpstr:		defm "CP\0"
 datestr:	defm "DATE\0"
@@ -66,6 +67,7 @@ uptimestr:	defm "UPTIME\0"
 
 ; Table linking command strings to function entry points
 dos_dispatch_table:
+	defw batchstr, Batch
 	defw cfbootstr, CfBoot
 	defw cpstr, Cp
 	defw datestr, Date
@@ -87,6 +89,70 @@ dos_dispatch_table:
 ;
 ; DOS COMMANDS
 ;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+Batch:
+	; Load a file's contents into RAM and
+	; execute it line-by-line as if it were
+	; input to the shell
+
+	; Check dos_argc
+	ld		a, (dos_argc)
+	cp		1
+	jr		z, BatchValidate
+	ld		hl, BatchArgcErrorStr
+	call		PrintStringA
+	ret
+BatchArgcErrorStr:
+	defm		"BATCH expects exactly one arg (filename)\r\n\0"
+BatchValidate:
+	ld	hl, (dos_argv)
+	ld	(target_filename_ptr), hl
+	call		ValidateFilename
+	ret		nz
+
+	ld	hl, MatchFilenameCallback
+	ld	(dir_walk_loop_callback), hl
+	ld	hl, BatchCallback
+	ld	(dir_walk_break_callback), hl
+	ld	hl, BadFileCallback
+	ld	(dir_walk_end_callback), hl
+	call	WalkRootDir
+	ret
+
+BatchCallback:
+	; At this point, we've matched
+	; Read the file into memory
+	ld	hl, 0x7000
+	call	ReadFile
+	ld	hl, 0x7000
+	ld	(line_start), hl
+	ld	bc, (size_in_bytes)
+BatchLoop:
+	ld	a, 0x0A		; Newline
+	cpir
+	ld	(line_end), hl
+	push	bc
+	; Overwrite newline with string terminator
+	dec	hl
+	ld	(hl), "\0"
+	ld	hl, (line_start)
+	call		ConvertToUpper
+	ld		bc, dos_argc
+	call		ParseLine
+	ld		bc, dos_dispatch_table
+	call		Dispatch
+	ld	hl, (line_end)
+	ld	(line_start), hl
+	pop	bc
+	ld	a, b
+	cp	0
+	jr	nz, BatchLoop
+	ld	a, C
+	cp	0
+	jr	nz, BatchLoop
+	ret
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 CfBoot:
@@ -319,6 +385,7 @@ DosHelp:
 	call PrintStringA
 	ret
 	dos_helpmessage:	defm "LM-512 DOS commands:\n\r"
+	defm "BATCH: Execute commands from text file.\n\r"
 	defm "CFBOOT: Read MBR from CF card to RAM and execute.\n\r"
 	defm "CP: Copy file.\n\r"
 	defm "DATE: Print current date and time.\n\r"
