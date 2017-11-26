@@ -18,12 +18,12 @@ uptime:			defs 2
 message_buffer:		defs 80
 
 ; Stuff for the inbuilt DOS
-dos_linebuf:		defs 256
+dos_linebuf:		defs 80
 dos_argc:		defs 2
 dos_argv:		defs 32
 
 ; Stuff for the monitor
-mon_linebuf:		defs 256
+mon_linebuf:		defs 80
 mon_argc:		defs 2
 mon_argv:		defs 2
 mon_stack_backup:	defs 22
