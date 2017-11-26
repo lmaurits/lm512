@@ -97,7 +97,7 @@ ValidateValueError:
 	or		1	; Reset zero flag
 	ret
 ValueErrorStr:
-	defm		" is not a valid value.  Use 2 digit hex, 00 to FF.\r\n\0"
+	defm		" is not a valid value (use 00-FF).\r\n\0"
 
 ValidateAddress:
 	call		StrLen
@@ -114,7 +114,7 @@ ValidateAddressError:
 	or		1	; Reset zero flag
 	ret
 AddressErrorStr:
-	defm		" is not a valid address.  Use 4 digit hex, 0000 to FFFF.\r\n\0"
+	defm		" is not a valid address (use 0000-FFFF.\r\n\0"
 
 ValidateSector:
 	call		StrLen
@@ -131,7 +131,7 @@ ValidateSectorError:
 	or		1	; Reset zero flag
 	ret
 SectorErrorStr:
-	defm		" is not a valid sector.  Use 8 digit hex, 00000000 to 100000.\r\n\0"
+	defm		" is not a valid sector (use 8 digit hex).\r\n\0"
 
 ValidateFilename:
 	push		hl
@@ -184,7 +184,7 @@ ValidateFilenameTooLong:
 	or		1	; Reset zero flag
 	ret
 FilenameTooLongStr:
-	defm		"Filename too long (must be 8.3)\r\n\0"
+	defm		"Filename too long (use 8.3)\r\n\0"
 ValidateFilenameTooManyPeriods:
 	pop		hl	; Get rid of filename pointer
 	ld		hl, FilenameTooManyStr
@@ -192,7 +192,7 @@ ValidateFilenameTooManyPeriods:
 	or		1	; Reset zero flag
 	ret
 FilenameTooManyStr:
-	defm		"Filename must not contain more than 1 period.\r\n\0"
+	defm		"Max. 1 period in filenames.\r\n\0"
 ValidateFilenameExtTooLong:
 	pop		hl	; Get rid of filename pointer
 	ld		hl, FilenameExtTooLongStr
@@ -200,4 +200,4 @@ ValidateFilenameExtTooLong:
 	or		1	; Reset zero flag
 	ret
 FilenameExtTooLongStr:
-	defm		"File extension too long (3 char max)\r\n\0"
+	defm		"Max. 3 chars in file extensions.\r\n\0"

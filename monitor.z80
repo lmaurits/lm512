@@ -132,7 +132,7 @@ Bank:
 	call		PrintStringA
 	ret
 BankErrStr:
-	defm		"BANK expects exactly one arg (2 digit hex bank)\r\n\0"
+	defm		"BANK expects exactly one arg (mem bank).\r\n\0"
 Bank00:
 	ld		hl, (mon_argv)
 	call		ValidateValue
@@ -187,7 +187,7 @@ CfLoad00:
 	call		CF_READ
 	ret
 CfLoadErrorStr:
-	defm		"CFLOAD expects exactly three args (A 4 digit hex destination address, a 6 digit hex start sector and a 2 digit hex sector count)\r\n\0"
+	defm		"CFLOAD expects exactly three args (mem address, start sector, sector count)\r\n\0"
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -233,7 +233,7 @@ CfSave00:
 	call		CF_WRITE
 	ret
 CfSaveErrorStr:
-	defm		"CFSAVE expects exactly three args (a 6 digit hex start sector, a 4 digit start address and a 2 digit hex sector count)\r\n\0"
+	defm		"CFSAVE expects exactly three args (start sector, mem address, sector count)\r\n\0"
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -255,7 +255,7 @@ Dump:
 	call		PrintStringA
 	ret
 DumpArgcErrorStr:
-	defm		"DUMP expects exactly one arg (4 digit hex address)\r\n\0"
+	defm		"DUMP expects exactly one arg (mem address)\r\n\0"
 Dump00:
 	ld		hl, (mon_argv)
 	call		ValidateAddress
@@ -361,7 +361,7 @@ In:
 	call		PrintStringA
 	ret
 InErrStr:
-	defm		"IN expects exactly one arg (2 digit hex address)\r\n\0"
+	defm		"IN expects exactly one arg (port)\r\n\0"
 In00:
 	ld		hl, (mon_argv)
 	call		Read8bit
@@ -405,7 +405,7 @@ Jump:
 	call		PrintStringA
 	ret
 JumpErrStr:
-	defm		"JUMP expects exactly one arg (4 digit hex address)\r\n\0"
+	defm		"JUMP expects exactly one arg (mem address)\r\n\0"
 Jump00:
 	ld		hl, (mon_argv)
 	call		ValidateAddress
@@ -427,7 +427,7 @@ Memcpy:
 	call		PrintStringA
 	ret
 MemcpyArgcErrStr:
-	defm		"MEMCPY expects exactly three args (Two 4 digit hex addresses and one 4 digit hex byte count\r\n\0"
+	defm		"MEMCPY expects exactly three args (dest address, src address, 4 digit byte count).\r\n\0"
 Memcpy00:
 	; Validate, parse and push destination
 	ld		hl, (mon_argv)
@@ -468,7 +468,7 @@ Memed:
 	call		PrintStringA
 	ret
 MemedArgcErrStr:
-	defm		"MEMED expects exactly one args (a 4 digit hex addresses\r\n\0"
+	defm		"MEMED expects exactly one args (mem addresses\r\n\0"
 Memed00:
 	; Validate, parse and push destination
 	ld		hl, (mon_argv)
@@ -580,7 +580,7 @@ Out:
 	call		PrintStringA
 	ret
 OutErrStr:
-	defm		"OUT expects exactly two args (A 2 digit hex address, a 2 digit hex value)\r\n\0"
+	defm		"OUT expects exactly two args (port, value).\r\n\0"
 Out00:
 	ld		hl, (mon_argv)
 	call		ValidateValue
