@@ -228,9 +228,9 @@ SetTimeFromString:
 	res		7, a
 	ld		b, a
 	pop		af
-	ld		l, a
-	pop		af
 	ld		h, a
+	pop		af
+	ld		l, a
 	call		RTC_WRITE
 	ret
 
