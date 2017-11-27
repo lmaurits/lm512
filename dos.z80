@@ -235,10 +235,60 @@ SetTimeFromString:
 	ret
 
 BuildTimeStr:
-	push		hl
+	push		hl		; Save string pointer
 	call		RTC_READ
-	pop		hl
+	ex		de, hl		; Move year and month to DE
+	pop		hl		; Restore string pointer
+
+	; Year
+	ld		(hl), "2"
+	inc hl
+	ld		(hl), "0"
+	inc hl
+	ld		a, e
+	call WriteComponent
+	ld		(hl), " "
+	inc hl
+	ld		a, d
+	; Turn month into non-BCD
+	ld		b, a
+	; Mask off 10 digits in A
+	and		00001111b
+	srl 		b	; Shift down 10 digi
+	srl		b
+	srl		b
+	srl		b
+TimeStrLoop:
+	add		10
+	djnz		TimeStrLoop
+	; Now deduct 1 (so Jan is offset 0)
+	sub		1
+	; Now multiply A by 3 (length of a month str)
+	ld		b, a
+	add		b
+	add		b
+	; Now use this as an index into month strings
+	ld		b, 0
+	ld		c, a
+	ex		de, hl
+	ld		hl, MonthStrings
+	add		hl, bc
+	ld		bc, 3
+	ldir
+	ex		de, hl
+	ld (hl), " "
+	inc hl
+	; Day
+
+	push		hl		; Save string pointer
+	call		RTC_READ
+	pop		hl		; Restore string pointer
 	push		bc
+	ld		a, e
+	call WriteComponent
+	ld (hl), " "
+	inc hl
+
 	ld		a, d
 	call WriteComponent
 	ld (hl), ":"
@@ -275,6 +325,8 @@ WriteComponent:
 	inc hl
 	ret
 
+MonthStrings:
+	defm	"JanFebMarAprMayJunJulAugSepOctNovDec"
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 Ls:
