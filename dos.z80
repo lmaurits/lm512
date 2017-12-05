@@ -67,6 +67,7 @@ DosHandleLine:
 ; Command strings
 
 batchstr:	defm "BATCH\0"
+clsstr:		defm "CLS\0"
 cpstr:		defm "CP\0"
 datestr:	defm "DATE\0"
 lsstr:		defm "LS\0"
@@ -84,6 +85,7 @@ uptimestr:	defm "UPTIME\0"
 ; Table linking command strings to function entry points
 dos_dispatch_table:
 	defw batchstr, Batch
+	defw clsstr, Cls
 	defw cpstr, Cp
 	defw datestr, Date
 	defw lsstr, Ls
@@ -436,6 +438,7 @@ DosHelp:
 	ret
 	dos_helpmessage:	defm "LM-512 DOS commands:\n\r"
 	defm "BATCH: Execute commands from text file.\n\r"
+	defm "CLS: Clear screen.\n\r"
 	defm "CP: Copy file.\n\r"
 	defm "DATE: Print current date and time.\n\r"
 	defm "LS: List directory contents.\n\r"
@@ -704,6 +707,22 @@ RmLoop:
 	call	SeekCluster		; Otherwise, jump to the next
 	jr	nz,RmLoop
 	ret
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; CLEAR SCREEN (CLS)
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+Cls:
+	ld	hl, clsstring
+	call	PrintStringA
+	ret
+clsstring:
+	defb	0x1b
+	defm	"[2J"
+	defb	0x1b
+	defm	"[H\0"
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
