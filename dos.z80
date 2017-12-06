@@ -75,6 +75,7 @@ batchstr:	defm "BATCH\0"
 clsstr:		defm "CLS\0"
 cpstr:		defm "CP\0"
 datestr:	defm "DATE\0"
+flashstr:	defm "FLASH\0"
 lsstr:		defm "LS\0"
 monstr:		defm "MONITOR\0"
 mvstr:		defm "MV\0"
@@ -95,6 +96,7 @@ dos_dispatch_table:
 	defw clsstr, Cls
 	defw cpstr, Cp
 	defw datestr, Date
+	defw flashstr, Flash
 	defw lsstr, Ls
 	defw helpstr, DosHelp
 	defw monstr, EnterMonitor
@@ -340,6 +342,48 @@ MonthStrings:
 	defm	"JanFebMarAprMayJunJulAugSepOctNovDec"
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+Flash:
+	ld	hl, FlashNotice
+	call	PrintStringA
+	call	DosLoadFile	; Get new file in mem
+	; Set BC to byte count
+	ld	bc, (size_in_bytes)
+	; Set HL to location of new file
+	ld	hl, (fileaddr)
+	; Set DE to destination
+	ld	de, $0000	; DEST in ROM is $0000
+	; Disable interrupts!
+	di
+FlashLoop:
+	ld	a, (hl)
+	ld	(de), a
+	call	FlashDelay
+	inc	hl
+	inc	de
+	dec	bc
+	ld	a, b
+	or	c
+	jp	nz, FlashLoop
+	; Reset when done
+	jp $0000
+
+FlashNotice:
+defm	"Rewriting firmware.  Good luck!\r\n\0"
+
+FlashDelay:
+	exx
+	ld	de, $071C
+delay_loop:
+	nop
+	dec	de
+	ld	a, d
+	or	e
+	jp	nz, delay_loop
+	exx
+	ret
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 Ls:
 	ld	hl,0x0000
 	ld	(file_count), hl
@@ -450,6 +494,7 @@ DosHelp:
 	defm "CLS: Clear screen.\n\r"
 	defm "CP: Copy file.\n\r"
 	defm "DATE: Print current date and time.\n\r"
+	defm "FLASH: Flash ROM from file.\n\r"
 	defm "LS: List directory contents.\n\r"
 	defm "MONITOR: Enter machine code monitore.\n\r"
 	defm "MV: Move (rename) file.\n\r"
