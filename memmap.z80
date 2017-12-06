@@ -29,6 +29,10 @@ mon_argv:		defs 2
 mon_stack_backup:	defs 22
 mon_reg_stack:		defs 2
 
+; Sys variables
+execaddr:		defs 2
+fileaddr:		defs 2
+
 ; Stuff for the FAT driver
 fat_sector_buffer:	defs 512	
 fat_buffer_index:	defs 2

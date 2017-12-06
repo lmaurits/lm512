@@ -11,6 +11,11 @@ Dos:
 	; Print welcome message
 	ld hl, welcomestr
 	call PrintStringA
+	; Initialise system variables
+	ld		hl, 0x8000
+	ld		(execaddr), hl
+	ld		hl, 0x8000
+	ld		(fileaddr), hl
 	; Initialise filesystem
 	call		InitFAT
 	; Check for AUTOEXEC.BAT
@@ -78,6 +83,8 @@ receivestr:	defm "RECEIVE\0"
 resetstr:	defm "RESET\0"
 rmstr:		defm "RM\0"
 loadstr:	defm "LOAD\0"
+setstr:		defm "SET\0"
+showstr:	defm "SHOW\0"
 sleepstr:	defm "SLEEP\0"
 typestr:	defm "TYPE\0"
 uptimestr:	defm "UPTIME\0"
@@ -93,7 +100,9 @@ dos_dispatch_table:
 	defw monstr, EnterMonitor
 	defw mvstr, Mv
 	defw serloadstr, SerialLoad
+	defw showstr, Show
 	defw sleepstr, SleepDos
+	defw setstr, Set
 	defw typestr, Type
 	defw uptimestr, Uptime
 	defw receivestr, Receive
@@ -448,6 +457,8 @@ DosHelp:
 	defm "RESET: Reset system.\n\r"
 	defm "RM: remove file.\n\r"
 	defm "SERLOAD ADR: Read data from serial port 2 to address ADR.\n\r"
+	defm "SET: Set system var.\n\r"
+	defm "SHOW: Show system var values.\n\r"
 	defm "SLEEP SEC: Sleep for SEC seconds.\n\r"
 	defm "TYPE: Show file contents.\n\r"
 	defm "UPTIME: Print system uptime in seconds.\n\r"
@@ -539,6 +550,126 @@ SerialLoadStr:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
+; SET
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; This could be made smaller by sharing code with cli/Dispatch
+Set:
+	ld		a, (dos_argc)
+	cp		2
+	jr		z, SetValidate
+	ld		hl, SetArgcErrorStr
+	call		PrintStringA
+	ret
+SetValidate:
+	ld		bc, SetTable
+SetValidateLoop:
+	ld		hl, (dos_argv)
+	ld		a, (bc)
+	ld		e, a
+	inc		bc
+	ld		a, (bc)
+	ld		d, a
+	inc		bc
+	push		bc
+	push		hl
+	call		StrCmp
+	pop		hl
+	jr		z, Set01		; We've matched!
+	pop		bc
+	inc		bc
+	inc		bc
+	jr		SetValidateLoop
+Set01:
+	pop		bc
+	ld		a, (bc)
+	inc		bc
+	ld		l, a
+	ld		a, (bc)
+	ld		h, a
+	ld		a, l
+	cp		0
+	jr		nz, SetDoIt
+	ld		a, h
+	cp		0
+	jr		nz, SetDoIt
+	; At this point we know the address is 0000, i.e. we did
+	; not really match
+SetError:
+	ld		hl, SetBadVarStr
+	call		PrintStringA
+	ret
+SetDoIt:
+	push		hl	; The address
+	ld		hl, (dos_argv+2)
+	call		Read16bit
+	pop		hl
+	ld		(hl), c
+	inc		hl
+	ld		(hl), b
+	ret
+
+SetArgcErrorStr:
+	defm		"SET expects exactly two args (one variable name, one value).\r\n\0"
+SetBadVarStr:
+	defm		"Unrecognised variable.  Run SHOW to see variables names.\r\n\0"
+
+execaddrstr:
+	defm		"EXECADDR\0"
+fileaddrstr:
+	defm		"FILEADDR\0"
+
+SetTable:
+	defw execaddrstr, execaddr
+	defw fileaddrstr, fileaddr
+	defw nullstr, 0x0000
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; SHOW
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+Show:
+	ld		de, SetTable
+ShowLoop:
+	ex		de, hl
+	ld		e, (hl)
+	inc		hl
+	ld		d, (hl)
+	inc		hl
+	ex		de, hl
+	call		StrLen
+	cp		0
+	ret		z
+	call		PrintStringA
+	ld		hl, SeparatorStr
+	call		PrintStringA
+	ex		de, hl
+	ld		c, (hl)
+	inc		hl
+	ld		b, (hl)
+	inc		hl
+	ex		de, hl
+	ld		hl, message_buffer
+	inc		bc
+	ld		a, (bc)
+	push		bc
+	call		StrfHex
+	pop		bc
+	dec		bc
+	ld		a, (bc)
+	call		StrfHex
+	call		TerminateLine
+	ld		hl, message_buffer
+	call		PrintStringA
+	jr		ShowLoop
+SeparatorStr:
+	defm		":\t\0"
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
 ; RECEIVE FILE
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -558,10 +689,10 @@ ReceiveValidate:
 	call		ValidateFilename
 	ret		nz
 	;; First download the file
-	ld		hl, 0x8000
+	ld		hl, (fileaddr)
 	call		SerialLoadCore
 	;; Now save
-	ld		hl, 0x8000
+	ld		hl, (fileaddr)
 	push		de
 	pop		bc
 	ld		de, (dos_argv)
@@ -749,7 +880,7 @@ Cp00:
 	ret		nz
 	ld	hl, (dos_argv)
 	call	LoadFile
-	ld	hl, 0x8000
+	ld	hl, (fileaddr)
 	ld	de, (dos_argv+2)
 	ld	bc, (size_in_bytes)
 	call	WriteFile
@@ -780,7 +911,7 @@ LoadFile:
 LoadCallback:
 	; At this point, we've matched
 	; Read the file into memory
-	ld	hl, 0x8000
+	ld	hl, (fileaddr)
 	call	ReadFile
 	ret
 
@@ -807,9 +938,15 @@ ExecFile:
 ExecCallback:
 	; At this point, we've matched
 	; Read the file into memory
-	ld	hl, 0x8000
+	ld	hl, (execaddr)
 	call	ReadFile
-	call	0x8000		; Execute the loaded file
+	; Can't actually call hl or (hl), so do this manually
+	; with a push and jump
+	ld	hl, ExecReturnAddress
+	push	hl
+	ld	hl, execaddr
+	jp	(hl)
+ExecReturnAddress:
 	ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -846,9 +983,9 @@ TypeValidate:
 TypeCallback:
 	; At this point, we've matched
 	; Read the file into memory
-	ld	hl, 0x8000
+	ld	hl, (fileaddr)
 	call	ReadFile
-	ld	hl, 0x8000
+	ld	hl, (fileaddr)
 	ld	de, (size_in_bytes)
 TypeLoop:
 	ld	a, (hl)
