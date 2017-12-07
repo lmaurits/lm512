@@ -427,13 +427,13 @@ LsBlankingLoop:
 	inc	hl
 	ld	(hl), "\t"
 	inc	hl
-	ld	de, (size_in_bytes)
-	ld		a, d
-	call		StrfHex
-	ld		a, e
-	call		StrfHex
 	ld	(hl), "\0"
 	ld	hl, message_buffer
+	call	PrintStringA
+	ld	hl, (size_in_bytes)
+	ld	de, (size_in_bytes+2)
+	call	B2D32
+	ld	hl, B2DBUF
 	call	PrintStringA
 	ld	hl, BytesStr
 	call	PrintStringA
@@ -442,33 +442,20 @@ LsBlankingLoop:
 LsEndCallback:
 	ld	hl, TotalStr
 	call	PrintStringA
-	ld	hl, message_buffer
-	ld	de, (file_count)
-	ld		a, d
-	call		StrfHex
-	ld		a, e
-	call		StrfHex
-	ld	(hl), "\0"
-	ld	hl, message_buffer
+	ld	hl, (file_count)
+	call	B2D16
+	ld	hl, B2DBUF
 	call	PrintStringA
+	ld	hl, BytesStr
 	ld	hl, FilesStr
 	call	PrintStringA
 
 	ld	hl, BytesLeadStr
 	call	PrintStringA
-	ld	hl, message_buffer
+	ld	hl, (total_size)
 	ld	de, (total_size+2)
-	ld		a, d
-	call		StrfHex
-	ld		a, e
-	call		StrfHex
-	ld	de, (total_size)
-	ld		a, d
-	call		StrfHex
-	ld		a, e
-	call		StrfHex
-	ld	(hl), "\0"
-	ld	hl, message_buffer
+	call	B2D32
+	ld	hl, B2DBUF
 	call	PrintStringA
 	ld	hl, BytesStr
 	call	PrintStringA
