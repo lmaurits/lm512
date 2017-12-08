@@ -47,8 +47,12 @@ Main:
 	ld		sp, SYSSTACK
 	ld		a, 0
 	ld		(ticks), a
+	ld		(alarm_flag), a
+	ld		(uptime_secs), a
+	ld		(uptime_mins), a
+	ld		(uptime_hours), a
 	ld		hl, 0x0000
-	ld		(uptime), hl
+	ld		(uptime_days), hl
 	; Initialise hardware
 	call		UartInit
 	call		CfSetup
@@ -102,17 +106,14 @@ IntVector:
 	dw		diskhandler
 
 Sleep:
-	ld		hl, (uptime)	; Get current uptime
-	ld		d, 0
-	ld		e, a
-	add		hl, de		; Add A seconds to get target
+	ld		(alarm_countdown), a
+	ld		a, (ticks)
+	ld		(alarm_tick), a
+	ld		a, 0xFF
+	ld		(alarm_flag), a
 SleepLoop:
-	ld		de, (uptime)	; Load current
-	ld		a, d		; Check high order
-	cp		h
-	jr		nz, SleepLoop	; No match, keep sleepin
-	ld		a, e		; Check low order
-	cp		l
-	jr		nz, SleepLoop	; No match, keep sleepin
-	; If matched, done
-	ret
+	ld		a, (alarm_flag)
+	cp		0
+	ret		z
+	halt
+	jr SleepLoop

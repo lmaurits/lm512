@@ -14,8 +14,15 @@ SYSSTACK:		equ 0x7FFF
 org			RAMBASE
 int_vector:		defs 16
 ticks:			defs 1
-uptime:			defs 2
+alarm_tick:		defs 1
+alarm_countdown:	defs 1
+alarm_flag:		defs 1
+uptime_secs:		defs 1
+uptime_mins:		defs 1
+uptime_hours:		defs 1
+uptime_days:		defs 2
 message_buffer:		defs 80
+
 
 ; Stuff for the inbuilt DOS
 dos_linebuf:		defs 80

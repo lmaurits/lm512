@@ -1064,12 +1064,52 @@ SleepDos00:
 	ret
 
 Uptime:
-	ld		hl, dos_linebuf
-	ld		de, (uptime)
-	ld		a, d
-	call		StrfHex
-	ld		a, e
-	call		StrfHex
-	call		TerminateLine
-	ld		hl, dos_linebuf
+	ld		hl, up_string
 	call		PrintStringA
+	ld		hl, (uptime_days)
+	call		B2D16
+	ld		hl, message_buffer
+	call		AppendB2D
+	ld		(hl), "\0"
+	ld		hl, message_buffer
+	call		PrintStringA
+	ld		hl, days_string
+	call		PrintStringA
+	ld		a, (uptime_hours)
+	call		B2D8
+	call		PadTime
+	ld		hl, message_buffer
+	call		AppendB2D
+	ld		(hl), ":"
+	inc		hl
+	push		hl
+	ld		a, (uptime_mins)
+	call		B2D8
+	call		PadTime
+	pop		hl
+	call		AppendB2D
+	ld		(hl), ":"
+	inc		hl
+	push		hl
+	ld		a, (uptime_secs)
+	call		B2D8
+	call		PadTime
+	pop		hl
+	call		AppendB2D
+	call		TerminateLine
+	ld		hl, message_buffer
+	call		PrintStringA
+	ret
+up_string:
+	defm		"Up \0"
+days_string:
+	defm		" days, \0"
+
+PadTime:
+	ld		a, c
+	cp		2
+	ret		z
+	dec		hl
+	ld		(hl), "0"
+	inc		c
+	ret

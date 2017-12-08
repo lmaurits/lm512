@@ -17,14 +17,58 @@ tickhandler:
 	push	hl
 	ld	a, (ticks)	; Load tick count
 	inc	a		; Incrmeent ticks
-	cp	64		; Have we hit 64?
-	jr	nz, tickhandler_1
-	; If we've had 64 ticks, that's 1 second
-	ld	a, 0		; Wrap tick counter
-	ld	hl, uptime	; Increment uptime in seconds
-	inc	(hl)
-tickhandler_1:
 	ld	(ticks), a	; Store tick count
+	;;;; Handle sleep alarm
+	ld	a, (alarm_flag)
+	cp	0xFF
+	jr	nz, tickhandler_uptime
+	ld	a, (alarm_tick)
+	ld	b, a
+	ld	a, (ticks)
+	cp	b
+	jr	nz, tickhandler_uptime
+	ld	a, (alarm_countdown)
+	dec	a
+	ld	(alarm_countdown), a
+	cp	0
+	jr	nz, tickhandler_uptime
+	ld	a, 0x00
+	ld	(alarm_flag), a
+tickhandler_uptime:
+	;;;; Handle uptime tracking
+	ld	a, (ticks)	; Load tick count
+	cp	64		; Have we hit 64?
+	jr	nz, tickhandler_end	 ; If not, done
+	; If we've had 64 ticks, that's 1 second
+	; Wrap tick counter
+	ld	a, 0
+	ld	(ticks), a
+	; Update uptime values
+	ld	a, (uptime_secs)
+	inc	a
+	ld	(uptime_secs), a
+	cp	60
+	jr	nz, tickhandler_end
+	ld	a, 0
+	ld	(uptime_secs), a
+	ld	a, (uptime_mins)
+	inc	a
+	ld	(uptime_mins), a
+	cp	60
+	jr	nz, tickhandler_end
+	ld	a, 0
+	ld	(uptime_mins), a
+	ld	a, (uptime_hours)
+	inc	a
+	ld	(uptime_hours), a
+	cp	24
+	jr	nz, tickhandler_end
+	ld	a, 0
+	ld	(uptime_hours), a
+	ld	hl, (uptime_days)
+	inc	hl
+	ld	(uptime_days), hl
+tickhandler_end:
 	in	a, (109)	; Reset RTC int
 	pop	hl		; Restore AF and HL
 	pop	af

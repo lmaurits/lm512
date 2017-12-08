@@ -373,7 +373,8 @@ Num2:        or $F0
 
 ; by Alwin Henseler
 
-
+B2D8:    LD H,0
+         LD L,A
 B2D16:   LD E,0
 B2D24:   LD D,0
 B2D32:   LD BC,0
@@ -452,3 +453,12 @@ B2DEXPL: RLD
          DJNZ B2DEXP     ; and go on to convert each BCD-byte into 2 ASCII
          SBC HL,BC       ; return with HL pointing to 1st decimal
          RET
+
+AppendB2D:
+; Append results of B2D to string at HL
+	ex		de, hl	; Get destination into DE
+	ld		hl, B2DBUF
+	call		SkipWhitespace
+	ldir
+	ex		de, hl	; Get destination into DE
+	ret
