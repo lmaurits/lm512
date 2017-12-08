@@ -33,6 +33,11 @@ mon_reg_stack:		defs 2
 execaddr:		defs 2
 fileaddr:		defs 2
 
+; Bin2Dec
+B2DINV:  DS 8            ; space for 64-bit input value (LSB first)
+B2DBUF:  DS 20           ; space for 20 decimal digits
+B2DEND:  DS 1            ; space for terminating 0
+
 ; Stuff for the FAT driver
 fat_sector_buffer:	defs 512	
 fat_buffer_index:	defs 2
