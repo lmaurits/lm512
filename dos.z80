@@ -976,7 +976,7 @@ ExecCallback:
 	; with a push and jump
 	ld	hl, ExecReturnAddress
 	push	hl
-	ld	hl, execaddr
+	ld	hl, (execaddr)
 	jp	(hl)
 ExecReturnAddress:
 	ret
