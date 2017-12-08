@@ -176,9 +176,9 @@ ReadA:
 	ret
 
 WriteA:
-	ld b, a
+	ld d, a
 	call WaitToWriteA
-	ld a, b
+	ld a, d
 	out (.THRA), a
 	ret
 
@@ -188,9 +188,9 @@ ReadB:
 	ret
 
 WriteB:
-	ld b, a
+	ld d, a
 	call WaitToWriteB
-	ld a, b
+	ld a, d
 	out (.THRB), a
 	ret
 

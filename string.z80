@@ -33,14 +33,49 @@ ReadLineA:
 	ld		b, 0
 ReadLineA00:
 	call		SERIAL_READ_A
+	; Check for backspace
+	cp		0x7F ; Backspace
+	jr		z, ReadLineABackspace
+	; If not backspace, echo and store
 	call		SERIAL_WRITE_A
 	ld		(hl), a
 	inc		hl
 	inc		b
+	; Check for end of line
 	cp		"\r"
 	jr		z, ReadLineA01
+	; Check for abort with ctrl-c
 	cp		0x03 ; Ctrl-C
 	jr		z, ReadLineA02
+	; Read next char
+	jr		ReadLineA00
+ReadLineABackspace:
+	; Handle Backspace
+	; Are we already at cursor?
+	ld		a, 0
+	cp		b
+	jr		z, ReadLineABackspaceEnd
+	dec		hl
+	dec		b
+	ld		a, 0x1B
+	call		SERIAL_WRITE_A
+	ld		a, 0x5B
+	call		SERIAL_WRITE_A
+	ld		a, "D"
+	call		SERIAL_WRITE_A
+	ld		a, 0x1B
+	call		SERIAL_WRITE_A
+	ld		a, 0x5B
+	call		SERIAL_WRITE_A
+	ld		a, "P"
+	call		SERIAL_WRITE_A
+	; Read next char
+	jr		ReadLineA00
+ReadLineABackspaceEnd:
+	ld		a, 0x1B
+	call		SERIAL_WRITE_A
+	ld		a, "g"
+	call		SERIAL_WRITE_A
 	jr		ReadLineA00
 ReadLineA01:
 	; Handle Enter
