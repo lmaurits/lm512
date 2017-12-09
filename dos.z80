@@ -25,16 +25,12 @@ Dos:
 	welcomestr: defm "Welcome to LM-512 microcomputer system.\n\r\0"
 
 DosAutoExec:
-	ld	hl, DosAutoExecStr
-	ld	(target_filename_ptr), hl
-	ld	hl, MatchFilenameCallback
-	ld	(dir_walk_loop_callback), hl
-	ld	hl, BatchCallback
-	ld	(dir_walk_break_callback), hl
-	ld	hl, NullCallback
-	ld	(dir_walk_end_callback), hl
-	call	WalkRootDir
-	ret
+	ld		hl, DosAutoExecStr
+	ld		(target_filename_ptr), hl
+	call		FindFile
+	ret		nz
+	; Dent *should* now be pointed at our target
+	jp		BatchCallback
 DosAutoExecStr:
 	defm		"AUTOEXEC.BAT\0"
 
@@ -141,25 +137,19 @@ Batch:
 	ret
 BatchValidate:
 	ld	hl, (dos_argv)
-	ld	(target_filename_ptr), hl
 	call		ValidateFilename
 	ret		nz
 
-	ld	hl, MatchFilenameCallback
-	ld	(dir_walk_loop_callback), hl
-	ld	hl, BatchCallback
-	ld	(dir_walk_break_callback), hl
-	ld	hl, BadFileCallback
-	ld	(dir_walk_end_callback), hl
-	call	WalkRootDir
-	ret
-
+	ld	hl, (dos_argv)
+	ld	(target_filename_ptr), hl
+	call		FindFile
+	jp		nz, BadFileCallback
 BatchCallback:
 	; At this point, we've matched
 	; Read the file into memory
-	ld	hl, 0x7000
+	ld		hl, (fileaddr)
 	call	ReadFile
-	ld	hl, 0x7000
+	ld		hl, (fileaddr)
 	ld	(line_start), hl
 	ld	bc, (size_in_bytes)
 BatchLoop:
@@ -413,16 +403,41 @@ Ls:
 	ld	(file_count), hl
 	ld	(total_size), hl
 	ld	(total_size+2), hl
-	ld	hl, LsLoopCallback
-	ld	(dir_walk_loop_callback), hl
-	ld	hl, NullCallback
-	ld	(dir_walk_break_callback), hl
-	ld	hl, LsEndCallback
-	ld	(dir_walk_end_callback), hl
-	call	WalkRootDir
+
+	call	ResetRootDir		; Jump to start of root dir
+LsLoop:
+	call	TestEndDir
+	jr	z, LsEnd
+	call	TestFreeEntry
+	jr	z, LsNext
+	call	TestLFN
+	jr	z, LsNext
+	call	LsHandleFile
+LsNext:
+	call	AdvanceDirEnt
+	jr	LsLoop
+LsEnd:
+	ld	hl, TotalStr
+	call	PrintStringA
+	ld	hl, (file_count)
+	call	B2D16
+	ld	hl, B2DBUF
+	call	PrintStringA
+	ld	hl, FilesStr
+	call	PrintStringA
+
+	ld	hl, BytesLeadStr
+	call	PrintStringA
+	ld	hl, (total_size)
+	ld	de, (total_size+2)
+	call	B2D32
+	ld	hl, B2DBUF
+	call	PrintStringA
+	ld	hl, BytesStr
+	call	PrintStringA
 	ret
 
-LsLoopCallback:
+LsHandleFile:
 	ld	hl, (file_count)
 	inc	hl
 	ld	(file_count), hl
@@ -482,28 +497,6 @@ LsSpaceLoop:
 	ld	hl, BytesStr
 	call	PrintStringA
 	ret
-
-LsEndCallback:
-	ld	hl, TotalStr
-	call	PrintStringA
-	ld	hl, (file_count)
-	call	B2D16
-	ld	hl, B2DBUF
-	call	PrintStringA
-	ld	hl, FilesStr
-	call	PrintStringA
-
-	ld	hl, BytesLeadStr
-	call	PrintStringA
-	ld	hl, (total_size)
-	ld	de, (total_size+2)
-	call	B2D32
-	ld	hl, B2DBUF
-	call	PrintStringA
-	ld	hl, BytesStr
-	call	PrintStringA
-	ret
-
 TotalStr:
 	defm	"\nTotal:\t\t\t\0"
 FilesStr:
@@ -841,37 +834,15 @@ Mv00:
 	call		ValidateFilename
 	ret		nz
 	; HL points to a filename we want to rename
-	ld	hl, (dos_argv)
-	ld	(target_filename_ptr), hl
-	; Setup to walk root dir
-	ld	hl, MatchFilenameCallback
-	ld	(dir_walk_loop_callback), hl
-	ld	hl, RenameCallback
-	ld	(dir_walk_break_callback), hl
-	ld	hl, BadFileCallback
-	ld	(dir_walk_end_callback), hl
-	call	WalkRootDir
-	ret
-
-MatchFilenameCallback:
-	call	BuildFilenameString
-	ld	(hl), "\0"		; BuildFilenameString doesn't terminate!
-	ld	hl, filename_buffer
-	ld	de, (target_filename_ptr)
-	call	StrictStrCmp
-	ret	nz
-	; At this point, we've matched
-	; Let the directory walker know we can break out of the loop
-	ld	a, 0xFF
-	ld	(dir_walk_breakout), a
-	ret
-
-RenameCallback:
+	ld		hl, (dos_argv)
+	ld		(target_filename_ptr), hl
+	call		FindFile
+	jp		nz, BadFileCallback
 	; Dent *should* now be pointed at our target
 	; Copy the new name into the filename buffer
 	ld	hl, (dos_argv+2)
 	ld	de, filename_buffer
-	ld	bc, 16
+	ld	bc, 12
 	ldir
 	; Overwrite the filename in the dent buffer
 	call	ReverseBuildFilenameString
@@ -902,7 +873,7 @@ Rm:
 	ld		hl, message_buffer
 	ld		de, rmstr
 	call		StrCpy
-	ld		de, ExpectsExactlyTwoArgsStr
+	ld		de, ExpectsExactlyOneArgStr
 	call		StrCpy
 	ld		de, FilenameStr
 	call		StrCpy
@@ -910,20 +881,17 @@ Rm:
 	call		PrintStringA
 	ret
 RmValidate:
-	ld	hl, (dos_argv)
-	ld	(target_filename_ptr), hl
+	ld		hl, (dos_argv)
+	ld		(target_filename_ptr), hl
 	call		ValidateFilename
 	ret		nz
-	ld	hl, MatchFilenameCallback
-	ld	(dir_walk_loop_callback), hl
-	ld	hl, RmCallback
-	ld	(dir_walk_break_callback), hl
-	ld	hl, BadFileCallback
-	ld	(dir_walk_end_callback), hl
-	call	WalkRootDir
-	ret
 
-RmCallback:
+	; HL points to a filename we want to remove
+	ld	hl, (dos_argv)
+	ld		(target_filename_ptr), hl
+	call	FindFile
+	jp	nz, BadFileCallback
+	; Dent *should* now be pointed at our target
 	; First, remove the directory entry
 	call	MakeAvailEntry
 	call	UpdateRootDir
@@ -1014,23 +982,32 @@ Cp00:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 DosLoadFile:
-	ld		hl, (dos_argv)
-
-LoadFile:
-	; HL points to a filename we want to load
-	; Save it for later
-	ld	(target_filename_ptr), hl
-	ld	hl, MatchFilenameCallback
-	ld	(dir_walk_loop_callback), hl
-	ld	hl, LoadCallback
-	ld	(dir_walk_break_callback), hl
-	ld	hl, BadFileCallback
-	ld	(dir_walk_end_callback), hl
-	call	WalkRootDir
+	; Check dos_argc
+	ld		a, (dos_argc)
+	cp		1
+	jr		z, LoadValidate
+	;; Argc error
+	ld		hl, message_buffer
+	ld		de, loadstr
+	call		StrCpy
+	ld		de, ExpectsExactlyOneArgStr
+	call		StrCpy
+	ld		de, FilenameStr
+	call		StrCpy
+	ld		hl, message_buffer
+	call		PrintStringA
 	ret
-
-LoadCallback:
-	; At this point, we've matched
+LoadValidate:
+	ld		hl, (dos_argv)
+	call		ValidateFilename
+	ret		nz
+LoadFile:
+	; HL points to a filename we want to remove
+	ld		hl, (dos_argv)
+	ld		(target_filename_ptr), hl
+	call		FindFile
+	jp		nz, BadFileCallback
+	; Dent *should* now be pointed at our target
 	; Read the file into memory
 	ld	hl, (fileaddr)
 	call	ReadFile
@@ -1044,19 +1021,9 @@ LoadCallback:
 
 ExecFile:
 	ld		hl, dos_linebuf
-	; HL points to a filename we want to load
-	; Save it for later
-	ld	(target_filename_ptr), hl
-	ld	hl, MatchFilenameCallback
-	ld	(dir_walk_loop_callback), hl
-	ld	hl, ExecCallback
-	ld	(dir_walk_break_callback), hl
-	ld	hl, BadFileCallback
-	ld	(dir_walk_end_callback), hl
-	call	WalkRootDir
-	ret
-
-ExecCallback:
+	ld		(target_filename_ptr), hl
+	call		FindFile
+	jp		nz, BadFileCallback
 	; At this point, we've matched
 	; Read the file into memory
 	ld	hl, (execaddr)
@@ -1098,18 +1065,11 @@ TypeValidate:
 	ret		nz
 	; HL points to a filename we want to load
 	; Save it for later
-	ld	hl, MatchFilenameCallback
-	ld	(dir_walk_loop_callback), hl
-	ld	hl, TypeCallback
-	ld	(dir_walk_break_callback), hl
-	ld	hl, BadFileCallback
-	ld	(dir_walk_end_callback), hl
-	call	WalkRootDir
-	ret
-
-TypeCallback:
-	; At this point, we've matched
-	; Read the file into memory
+	ld		hl, (dos_argv)
+	ld		(target_filename_ptr), hl
+	call		FindFile
+	jp		nz, BadFileCallback
+	; Dent *should* now be pointed at our target
 	ld	hl, (fileaddr)
 	call	ReadFile
 	ld	hl, (fileaddr)

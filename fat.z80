@@ -693,65 +693,39 @@ WriteFileEndChain:
 	call	SaveRootDir
 	ret
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-WalkRootDir:
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;
-; Walk the root directory, executing callbacks along the way
-;
-; * dir_walk_loop_callback is called for each file.  By writing a non-zero
-;   value to dir_walk_breakout it can break out of the loop early.
-; * dir_walk_break_callback will be called at an early loop breakout
-; * dir_walk_end_callback will be called if the loop ends without being
-;   broken out of, after fully traversing the directory.
-;
-; All callbacks should end with a ret as per usual.  This function maintains
-; the stack such that this will return to wherever WalkRootDir was called from.
-;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-	ld	a, 00
-	ld	(dir_walk_breakout), a	; Clear breakout claf
-	call	ResetRootDir		; Jump to start of root dir
-WalkRootDirLoop:
-	call	TestEndDir
-	jr	z, WalkRootDirEnd
-	call	TestFreeEntry
-	jr	z, WalkRootDirNext
-	call	TestLFN
-	jr	z, WalkRootDirNext
-	; Execute callback
-	ld	de, WalkRootDirLoopReentry	; Manually push return address.
-	push	de
-	ld	hl, (dir_walk_loop_callback)
-	jp	(hl)
-WalkRootDirLoopReentry:
-	; Check if the callback asked us to break out of the loop
-	ld	a, (dir_walk_breakout)
-	cp	0
-	jr	nz,WalkRootDirBreakout
-WalkRootDirNext:
-	; Otherwise, continue looping
-	call	AdvanceDirEnt
-	jr	WalkRootDirLoop
-
-WalkRootDirBreakout:
-	; Execute callback
-	; Don't push a return address - the ret of the callback will return
-	; to the caller of WalkRootDir, which is fine
-	ld	hl, (dir_walk_break_callback)
-	jp	(hl)
-
-WalkRootDirEnd:
-	; Execute callback
-	; Don't push a return address - the ret of the callback will return
-	; to the caller of WalkRootDir, which is fine
-	ld	hl, (dir_walk_end_callback)
-	jp	(hl)
-
 ;;;;;;;;;;;;
 
-NullCallback:
+FindFile:
+	; Advance directory pointer to find file matching string
+	; pointed to by HL
+	ld	(target_filename_ptr), hl
+	call	ResetRootDir		; Jump to start of root dir
+FindFileLoop:
+	call	TestEndDir
+	jr	z, FindFileNotFound
+	call	TestFreeEntry
+	jr	z, FindFileNext
+	call	TestLFN
+	jr	z, FindFileNext
+	; Compare names
+	call	BuildFilenameString
+	ld	(hl), "\0"		; BuildFilenameString doesn't terminate!
+	ld	hl, filename_buffer
+	ld	de, (target_filename_ptr)
+	call	StrictStrCmp
+	; If match, jump to end
+	jr	z, FindFileFound
+	; Otherwise check next entry
+FindFileNext:
+	call	AdvanceDirEnt
+	jr	FindFileLoop
+FindFileFound:
+	; We found it, and the dir entry now points at it
+	ld	a, 0	; Success
+	cp	0
+	ret
+FindFileNotFound:
+	; We did NOT find it! :(
+	ld	a, 0xFF	; Fail!
+	cp	0
 	ret
