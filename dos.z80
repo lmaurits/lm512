@@ -649,31 +649,10 @@ Set:
 	call		PrintStringA
 	ret
 SetValidate:
-	ld		bc, SetTable
-SetValidateLoop:
 	ld		hl, (dos_argv)
-	ld		a, (bc)
-	ld		e, a
-	inc		bc
-	ld		a, (bc)
-	ld		d, a
-	inc		bc
-	push		bc
-	push		hl
-	call		StrCmp
-	pop		hl
-	jr		z, Set01		; We've matched!
-	pop		bc
-	inc		bc
-	inc		bc
-	jr		SetValidateLoop
-Set01:
-	pop		bc
-	ld		a, (bc)
-	inc		bc
-	ld		l, a
-	ld		a, (bc)
-	ld		h, a
+	ld		bc, SetTable
+	call		MapString2Address
+	; Now HL is either a RAM address or 0x0000
 	ld		a, l
 	cp		0
 	jr		nz, SetDoIt
@@ -1115,7 +1094,7 @@ SleepDos:
 	call		PrintStringA
 	ret
 SleepArgsStr:
-	defm		" (2 digit hex second count)\r\n\0"
+	defm		"(2 digit hex second count)\r\n\0"
 SleepDos00:
 	; Validate address
 	ld		hl, (dos_argv)

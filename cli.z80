@@ -49,31 +49,40 @@ ParseLine01:
 	pop		hl
 	ret
 
-; Function which interprets the string pointed to by HL
-; as a command and calls the appropriate function
-Dispatch:
+MapString2Address:
+	; In:
+	; HL points to a string
+	; BC points to table of (string address, arb address) pairs
+	; The table MUST be terminated with a pointer to a null str,
+	; which acts as a default match
+	; This function writes the matching arb address into HL
 	ld		a, (bc)
-	inc		bc
 	ld		e, a
-	ld		a, (bc)
 	inc		bc
+	ld		a, (bc)
 	ld		d, a
+	inc		bc
 	push		bc
 	push		hl
 	call		StrCmp
 	pop		hl
-	jr		z, Dispatch01		; We've matched!
 	pop		bc
+	jr		z, MapS2A01		; We've matched!
 	inc		bc
 	inc		bc
-	jr		Dispatch
-Dispatch01:
-	pop		bc
+	jr		MapString2Address
+MapS2A01:
 	ld		a, (bc)
-	inc		bc
 	ld		l, a
+	inc		bc
 	ld		a, (bc)
 	ld		h, a
+	ret
+
+; Function which interprets the string pointed to by HL
+; as a command and calls the appropriate function
+Dispatch:
+	call		MapString2Address
 	jp		(hl)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
