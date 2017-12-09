@@ -343,34 +343,42 @@ MonthStrings:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 Flash:
+	;; First, warn the user
 	ld	hl, FlashNotice
 	call	PrintStringA
+	;; Now copy the core of this function into RAM
+	;; where it will not get clobbered
+	ld	hl, FlashRelocatablePayload
+	ld	de, 0x8000	; Ignore FILEADDR, this is terminal!
+	ld	bc, FlashRelocatablePayloadEnd - FlashRelocatablePayload	; Size of payload
+	ldir			; Relocate
+	jp	0x8000		; Do it!
+FlashNotice:
+defm	"Rewriting firmware.  Good luck!\r\n\0"
+
+FlashRelocatablePayload:
+	; NB: This is loaded into RAM at address 0x9000
+	; But the assembler doesn't know this
+	; So ONLY use jr, not jp, below
+	ld	hl, 0x9000
+	ld	(fileaddr), hl
 	call	DosLoadFile	; Get new file in mem
 	; Set BC to byte count
 	ld	bc, (size_in_bytes)
 	; Set HL to location of new file
-	ld	hl, (fileaddr)
+	ld	hl, 0x9000
 	; Set DE to destination
 	ld	de, $0000	; DEST in ROM is $0000
 	; Disable interrupts!
 	di
 FlashLoop:
-	ld	a, (hl)
-	ld	(de), a
-	call	FlashDelay
-	inc	hl
-	inc	de
-	dec	bc
+	ld	b, (hl)			; Get the new byte in B
+	ld	a, (de)			; Get the current byte in A
+	cp	b			; Compare 'em
+	jr	z, delay_loop_end	; Don't overwrite needlessly
 	ld	a, b
-	or	c
-	jp	nz, FlashLoop
-	; Reset when done
-	jp $0000
-
-FlashNotice:
-defm	"Rewriting firmware.  Good luck!\r\n\0"
-
-FlashDelay:
+	ld	(de), a
+	;;; Hacky delay loop
 	exx
 	ld	de, $071C
 delay_loop:
@@ -378,9 +386,19 @@ delay_loop:
 	dec	de
 	ld	a, d
 	or	e
-	jp	nz, delay_loop
+	jr	nz, delay_loop
 	exx
-	ret
+delay_loop_end:
+	;;; Back to copying...
+	inc	hl
+	inc	de
+	dec	bc
+	ld	a, b
+	or	c
+	jr	nz, FlashLoop
+	; Reset when done
+	jp $0000
+FlashRelocatablePayloadEnd:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

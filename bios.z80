@@ -67,7 +67,7 @@ MainLoop:
 UartInit:
 	ld		a, 10100011b
 	call		SERIAL_INIT_A
-	ld		a, 10100011b
+	ld		a, 11100011b
 	call		SERIAL_INIT_B
 	ret
 
