@@ -3,10 +3,8 @@ ReadMBR:
 	; The MBR is the first sector of the disk.
 	ld	hl, fat_sector_buffer
 	ld	a, 01	; MBR is one sector
-	ld	b, 00	; MBR starts at sector 0
-	ld	c, 00
-	ld	d, 00
-	ld	e, 00
+	ld	bc, 00	; MBR starts at sector 0
+	ld	de, 00
 	rst	0x20	; call CF_READ
 ReadVBR:
 	; The MBR contains the address of the first sector of partition 1
@@ -61,69 +59,6 @@ ComputeSectors:
 	ld	(start_of_data), hl
 	ret
 
-FatDebug:
-	; Dump some info for debugging
-	ld	hl, InitFatDebugStr1
-	call	PrintStringA
-	ld	hl, dos_linebuf
-	ld	de, (start_of_fat)
-	ld		a, d
-	call		StrfHex
-	ld		a, e
-	call		StrfHex
-	ld		(hl), "\r"
-	inc		hl
-	ld		(hl), "\n"
-	inc		hl
-	ld		(hl), "\0"
-	inc		hl
-	ld		hl, dos_linebuf
-	call		PrintStringA
-
-	ld	hl, InitFatDebugStr2
-	call	PrintStringA
-	ld	hl, dos_linebuf
-	ld	de, (start_of_root_dir)
-	ld		a, d
-	call		StrfHex
-	ld		a, e
-	call		StrfHex
-	ld		(hl), "\r"
-	inc		hl
-	ld		(hl), "\n"
-	inc		hl
-	ld		(hl), "\0"
-	inc		hl
-	ld		hl, dos_linebuf
-	call		PrintStringA
-
-	ld	hl, InitFatDebugStr3
-	call	PrintStringA
-	ld	hl, dos_linebuf
-	ld	de, (start_of_data)
-	ld		a, d
-	call		StrfHex
-	ld		a, e
-	call		StrfHex
-	ld		(hl), "\r"
-	inc		hl
-	ld		(hl), "\n"
-	inc		hl
-	ld		(hl), "\0"
-	inc		hl
-	ld		hl, dos_linebuf
-	call		PrintStringA
-
-InitFatDebugStr1:
-	defm	"Start of FAT: \0"
-InitFatDebugStr2:
-	defm	"Start of root dir: \0"
-InitFatDebugStr3:
-	defm	"Start of data: \0"
-
-
-
-
 ;;;;;;;;;;;;
 
 ClusterToSector:
@@ -135,8 +70,7 @@ ClusterToSector:
 	sbc	hl, bc			; Subtract 2 (clusters 0, 1 don't map to data region)
 	ld	b, h
 	ld	c, l
-	ld	d, 0
-	ld	e, 0
+	ld	de, 0
 	ret
 
 ;;;;;;;;;;;;
@@ -154,8 +88,7 @@ ResetFat:
 	ld	bc, (start_of_fat)
 	ld	(fat_sector), bc
 ResetFatAdvanceSectorEntryPoint:
-	ld	d, 0
-	ld	e, 0
+	ld	de, 0
 	ld	a, 0x01
 	rst	0x20	; call CF_READ
 	; Skip over reserved clusters
@@ -200,8 +133,7 @@ AdvanceCluster_ReadNewSector:
 	ld	bc, (fat_sector)
 	inc	bc
 	ld	(fat_sector), bc
-	ld	d, 0
-	ld	e, 0
+	ld	de, 0
 	ld	a, 0x01
 	rst	0x20	; call CF_READ
 
@@ -273,15 +205,13 @@ SeekCluster:
 	ld	(fat_cluster), hl	; Keep target cluster
 	ex	de,hl			; Now cluster is in DE
 	ld	hl, (start_of_fat)
-	ld	e, d			; Set DE to 0D
-	ld	d, 0
+	ld	d, 0			; Set DE to 0D
 	add	hl, de			; HL is now desired FAT sector
 	ld	(fat_sector), hl
 
 	ld	b, h			; Setup registers for CF_READ
 	ld	c, l
-	ld	d, 0
-	ld	e, 0
+	ld	de, 0
 	ld	hl, fat_buffer
 	ld	a, 1
 	rst	0x20	; call CF_READ
@@ -336,8 +266,7 @@ FollowClusterChain:
 SaveFat:
 	ld	hl, fat_buffer
 	ld	bc, (fat_sector)
-	ld	d, 0
-	ld	e, 0
+	ld	de, 0
 	ld	a, 1
 	call	CF_WRITE
 	ret
@@ -354,8 +283,7 @@ ResetRootDir:
 	ld	bc, (start_of_root_dir)
 	ld	(root_dir_sector), bc
 ResetRootDirAdvanceDirEntryPoint:
-	ld	d, 0
-	ld	e, 0
+	ld	de, 0
 	ld	a, 0x01
 	rst	0x20	; call CF_READ
 	; Update indexes
@@ -559,8 +487,7 @@ UpdateRootDir:
 SaveRootDir:
 	ld	hl, root_dir_buffer
 	ld	bc, (root_dir_sector)
-	ld	d, 0
-	ld	e, 0
+	ld	de, 0
 	ld	a, 1
 	call	CF_WRITE
 	ret
