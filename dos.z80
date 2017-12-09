@@ -422,18 +422,38 @@ LsBlankingLoop:
 	ld	de, message_buffer
 	ld	bc, 12
 	ldir
-	ex	de,hl
-	ld	(hl), "\t"
-	inc	hl
-	ld	(hl), "\t"
-	inc	hl
-	ld	(hl), "\0"
-	ld	hl, message_buffer
-	call	PrintStringA
+	; Ugly, ugly clean up
+	ld	de, message_buffer
+	ld	b, 12
+LsCleanLoop:
+	ld	a, (de)
+	cp	"\0"
+	jr	z, LsCleanFix
+	inc	de
+	djnz	LsCleanLoop
+	jr	LsUgh
+LsCleanFix:
+	ld	a, " "
+	ld	(de), a
+	jr	LsCleanLoop
+LsUgh:
+	push	de
 	ld	hl, (size_in_bytes)
 	ld	de, (size_in_bytes+2)
 	call	B2D32
-	ld	hl, B2DBUF
+	pop	hl
+	ld	a, 24
+	sub	c
+	push	bc
+	ld	b, a
+LsSpaceLoop:
+	ld	(hl), " "
+	inc	hl
+	djnz	LsSpaceLoop
+	pop	bc
+	call	AppendB2D
+	ld	(hl), "\0"
+	ld	hl, message_buffer
 	call	PrintStringA
 	ld	hl, BytesStr
 	call	PrintStringA
@@ -446,7 +466,6 @@ LsEndCallback:
 	call	B2D16
 	ld	hl, B2DBUF
 	call	PrintStringA
-	ld	hl, BytesStr
 	ld	hl, FilesStr
 	call	PrintStringA
 
