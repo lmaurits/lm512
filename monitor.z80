@@ -128,11 +128,19 @@ Bank:
 	ld		a, (mon_argc)
 	cp		1
 	jr		z, Bank00
-	ld		hl, BankErrStr
+	;; Argc error
+	ld		hl, message_buffer
+	ld		de, bankstr
+	call		StrCpy
+	ld		de, ExpectsExactlyOneArgStr
+	call		StrCpy
+	ld		de, BankArgsStr
+	call		StrCpy
+	ld		hl, message_buffer
 	call		PrintStringA
 	ret
-BankErrStr:
-	defm		"BANK expects exactly one arg (mem bank).\r\n\0"
+BankArgsStr:
+	defm		"(mem bank).\r\n\0"
 Bank00:
 	ld		hl, (mon_argv)
 	call		ValidateValue
@@ -150,7 +158,15 @@ CfLoad:
 	ld		a, (mon_argc)
 	cp		3
 	jr		z, CfLoad00
-	ld		hl, CfLoadErrorStr
+	;; Argc error
+	ld		hl, message_buffer
+	ld		de, cfloadstr
+	call		StrCpy
+	ld		de, ExpectsExactlyThreeArgsStr
+	call		StrCpy
+	ld		de, CfLoadArgStr
+	call		StrCpy
+	ld		hl, message_buffer
 	call		PrintStringA
 	ret
 CfLoad00:
@@ -186,8 +202,10 @@ CfLoad00:
 	; Do it
 	call		CF_READ
 	ret
-CfLoadErrorStr:
-	defm		"CFLOAD expects exactly three args (mem address, start sector, sector count)\r\n\0"
+ExpectsExactlyThreeArgsStr:
+	defm		" expects exactly three args \r\n\0"
+CfLoadArgStr:
+	defm		"(mem address, start sector, sector count)\r\n\0"
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -196,7 +214,15 @@ CfSave:
 	ld		a, (mon_argc)
 	cp		3
 	jr		z, CfSave00
-	ld		hl, CfSaveErrorStr
+	;; Argc error
+	ld		hl, message_buffer
+	ld		de, cfsavestr
+	call		StrCpy
+	ld		de, ExpectsExactlyThreeArgsStr
+	call		StrCpy
+	ld		de, CfSaveArgStr
+	call		StrCpy
+	ld		hl, message_buffer
 	call		PrintStringA
 	ret
 CfSave00:
@@ -232,8 +258,8 @@ CfSave00:
 	; Do it
 	call		CF_WRITE
 	ret
-CfSaveErrorStr:
-	defm		"CFSAVE expects exactly three args (start sector, mem address, sector count)\r\n\0"
+CfSaveArgStr:
+	defm		"(start sector, mem address, sector count)\r\n\0"
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -251,11 +277,17 @@ Dump:
 	ld		a, (mon_argc)
 	cp		1
 	jr		z, Dump00
-	ld		hl, DumpArgcErrorStr
+	;; Argc error
+	ld		hl, message_buffer
+	ld		de, dumpstr
+	call		StrCpy
+	ld		de, ExpectsExactlyOneArgStr
+	call		StrCpy
+	ld		de, AddressStr
+	call		StrCpy
+	ld		hl, message_buffer
 	call		PrintStringA
 	ret
-DumpArgcErrorStr:
-	defm		"DUMP expects exactly one arg (mem address)\r\n\0"
 Dump00:
 	ld		hl, (mon_argv)
 	call		ValidateAddress
@@ -357,11 +389,19 @@ In:
 	ld		a, (mon_argc)
 	cp		1
 	jr		z, In00
-	ld		hl, InErrStr
+	;; Argc error
+	ld		hl, message_buffer
+	ld		de, instr
+	call		StrCpy
+	ld		de, ExpectsExactlyOneArgStr
+	call		StrCpy
+	ld		de, InArgsStr
+	call		StrCpy
+	ld		hl, message_buffer
 	call		PrintStringA
 	ret
-InErrStr:
-	defm		"IN expects exactly one arg (port)\r\n\0"
+InArgsStr:
+	defm		"(port)\r\n\0"
 In00:
 	ld		hl, (mon_argv)
 	call		Read8bit
@@ -401,11 +441,17 @@ Jump:
 	ld		a, (mon_argc)
 	cp		1
 	jr		z, Jump00
-	ld		hl, JumpErrStr
+	;; Argc error
+	ld		hl, message_buffer
+	ld		de, jumpstr
+	call		StrCpy
+	ld		de, ExpectsExactlyOneArgStr
+	call		StrCpy
+	ld		de, AddressStr
+	call		StrCpy
+	ld		hl, message_buffer
 	call		PrintStringA
 	ret
-JumpErrStr:
-	defm		"JUMP expects exactly one arg (mem address)\r\n\0"
 Jump00:
 	ld		hl, (mon_argv)
 	call		ValidateAddress
@@ -423,11 +469,19 @@ Memcpy:
 	ld		a, (mon_argc)
 	cp		3
 	jr		z, Memcpy00
-	ld		hl, MemcpyArgcErrStr
+	;; Argc error
+	ld		hl, message_buffer
+	ld		de, memcpystr
+	call		StrCpy
+	ld		de, ExpectsExactlyThreeArgsStr
+	call		StrCpy
+	ld		de, MemcpyArgStr
+	call		StrCpy
+	ld		hl, message_buffer
 	call		PrintStringA
 	ret
-MemcpyArgcErrStr:
-	defm		"MEMCPY expects exactly three args (dest address, src address, 4 digit byte count).\r\n\0"
+MemcpyArgStr:
+	defm		"(dest address, src address, 4 digit byte count).\r\n\0"
 Memcpy00:
 	; Validate, parse and push destination
 	ld		hl, (mon_argv)
@@ -464,11 +518,17 @@ Memed:
 	ld		a, (mon_argc)
 	cp		1
 	jr		z, Memed00
-	ld		hl, MemedArgcErrStr
+	;; Argc error
+	ld		hl, message_buffer
+	ld		de, memedstr
+	call		StrCpy
+	ld		de, ExpectsExactlyOneArgStr
+	call		StrCpy
+	ld		de, AddressStr
+	call		StrCpy
+	ld		hl, message_buffer
 	call		PrintStringA
 	ret
-MemedArgcErrStr:
-	defm		"MEMED expects exactly one args (mem addresses\r\n\0"
 Memed00:
 	; Validate, parse and push destination
 	ld		hl, (mon_argv)
@@ -576,11 +636,19 @@ Out:
 	ld		a, (mon_argc)
 	cp		2
 	jr		z, Out00
-	ld		hl, OutErrStr
+	;; Argc error
+	ld		hl, message_buffer
+	ld		de, outstr
+	call		StrCpy
+	ld		de, ExpectsExactlyTwoArgsStr
+	call		StrCpy
+	ld		de, OutArgsStr
+	call		StrCpy
+	ld		hl, message_buffer
 	call		PrintStringA
 	ret
-OutErrStr:
-	defm		"OUT expects exactly two args (port, value).\r\n\0"
+OutArgsStr:
+	defm		"(port, value).\r\n\0"
 Out00:
 	ld		hl, (mon_argv)
 	call		ValidateValue

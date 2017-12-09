@@ -155,6 +155,22 @@ StrLen01:
 	ld a, b
 	ret
 
+StrCpy:
+	; Copy null terminated string starting at DE to HL
+	ld	a, (de)
+	ld	(hl), a
+	cp	"\0"
+	ret z
+	inc	hl
+	inc	de
+	jr StrCpy
+
+StrAddChar:
+	; Copy char in A to HL and inc
+	ld	(hl), a
+	inc	hl
+	ret
+
 IsStrDec:
 	push hl
 IsStrDec00:

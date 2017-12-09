@@ -92,12 +92,16 @@ ValidateValue:
 	ret
 ValidateValueError:
 	call		PrintStringA
+	ld		hl, IsNotAValidStr
+	call		PrintStringA
 	ld		hl, ValueErrorStr
 	call		PrintStringA
 	or		1	; Reset zero flag
 	ret
+IsNotAValidStr:
+	defm		" is not a valid \0"
 ValueErrorStr:
-	defm		" is not a valid value (use 00-FF).\r\n\0"
+	defm		"value (use 00-FF).\r\n\0"
 
 ValidateAddress:
 	call		StrLen
@@ -109,12 +113,14 @@ ValidateAddress:
 	ret
 ValidateAddressError:
 	call		PrintStringA
+	ld		hl, IsNotAValidStr
+	call		PrintStringA
 	ld		hl, AddressErrorStr
 	call		PrintStringA
 	or		1	; Reset zero flag
 	ret
 AddressErrorStr:
-	defm		" is not a valid address (use 0000-FFFF.\r\n\0"
+	defm		"address (use 0000-FFFF).\r\n\0"
 
 ValidateSector:
 	call		StrLen
@@ -126,19 +132,21 @@ ValidateSector:
 	ret
 ValidateSectorError:
 	call		PrintStringA
+	ld		hl, IsNotAValidStr
+	call		PrintStringA
 	ld		hl, SectorErrorStr
 	call		PrintStringA
 	or		1	; Reset zero flag
 	ret
 SectorErrorStr:
-	defm		" is not a valid sector (use 8 digit hex).\r\n\0"
+	defm		"sector (use 8 digit hex).\r\n\0"
 
 ValidateFilename:
 	push		hl
 	; Must be less than 13 chars
 	call		StrLen
 	cp		13
-	jr		nc, ValidateFilenameTooLong
+	jr		nc, ValidateFilenameBad ; filename too long!
 	; Must have only one period
 	pop		hl
 	push		hl
@@ -158,46 +166,29 @@ ValidateFilenameCountPeriodEnd:
 	; d now contains period count
 	ld		a, d
 	cp		2
-	jr		nc, ValidateFilenameTooManyPeriods
+	jr		nc, ValidateFilenameBad ; Too many periods!
+	; If no periods, no extension, so no need to check ext length
 	cp		0
 	jr		z, ValidateFilenameAllGood
 	; Extension must be 3 chars or less
 	; If we're here we *know* there is a period
-	pop		hl
-	push		hl
 	ld		a, "."
 	ld		bc, 12
 	cpir
 	; Now we've advanced to the first char after the period.
 	call		StrLen
 	cp		4
-	jr		nc, ValidateFilenameExtTooLong
+	jr		nc, ValidateFilenameBad ; Extension too long!
 ValidateFilenameAllGood:
 	; All good!
 	pop		hl	; Get rid of filename pointer
 	cp		a	; Set zero flag
 	ret
-ValidateFilenameTooLong:
+ValidateFilenameBad:
 	pop		hl	; Get rid of filename pointer
-	ld		hl, FilenameTooLongStr
+	ld		hl, BadFilenameStr
 	call		PrintStringA
 	or		1	; Reset zero flag
 	ret
-FilenameTooLongStr:
-	defm		"Filename too long (use 8.3)\r\n\0"
-ValidateFilenameTooManyPeriods:
-	pop		hl	; Get rid of filename pointer
-	ld		hl, FilenameTooManyStr
-	call		PrintStringA
-	or		1	; Reset zero flag
-	ret
-FilenameTooManyStr:
-	defm		"Max. 1 period in filenames.\r\n\0"
-ValidateFilenameExtTooLong:
-	pop		hl	; Get rid of filename pointer
-	ld		hl, FilenameExtTooLongStr
-	call		PrintStringA
-	or		1	; Reset zero flag
-	ret
-FilenameExtTooLongStr:
-	defm		"Max. 3 chars in file extensions.\r\n\0"
+BadFilenameStr:
+	defm		"Bad filename (use 8.3)\r\n\0"

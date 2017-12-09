@@ -128,11 +128,17 @@ Batch:
 	ld		a, (dos_argc)
 	cp		1
 	jr		z, BatchValidate
-	ld		hl, BatchArgcErrorStr
+	;; Argc error
+	ld		hl, message_buffer
+	ld		de, batchstr
+	call		StrCpy
+	ld		de, ExpectsExactlyOneArgStr
+	call		StrCpy
+	ld		de, FilenameStr
+	call		StrCpy
+	ld		hl, message_buffer
 	call		PrintStringA
 	ret
-BatchArgcErrorStr:
-	defm		"BATCH expects exactly one arg (filename)\r\n\0"
 BatchValidate:
 	ld	hl, (dos_argv)
 	ld	(target_filename_ptr), hl
@@ -193,7 +199,7 @@ Date:
 	call		PrintStringA
 	ret
 DateArgcErrStr:
-	defm		"Date expects zero arguments (to get) or one argument (to set, YYMMDDHHmmSS)\r\n\0"
+	defm		"Date expects zero (to get) or one arguments (to set, YYMMDDHHmmSS)\r\n\0"
 DateSet:
 	ld		hl, (dos_argv)
 	call		ValidateDateString
@@ -220,7 +226,7 @@ ValidateDateStringErr:
 	or		1	; Reset zero flag
 	ret
 ValidateDateStringErrStr:
-	defm		"Date setting requires a 12 digit decimal string in YYMMDDHHmmSS format\r\n\0"
+	defm		"Set date with YYMMDDHHmmSS format\r\n\0"
 SetTimeFromString:
 	call		ReadBCDByte
 	res		7, a			; Strip 7th bit
@@ -517,20 +523,20 @@ DosHelp:
 	defm "BATCH: Execute commands from text file.\n\r"
 	defm "CLS: Clear screen.\n\r"
 	defm "CP: Copy file.\n\r"
-	defm "DATE: Print current date and time.\n\r"
+	defm "DATE: Print/set date and time.\n\r"
 	defm "FLASH: Flash ROM from file.\n\r"
 	defm "LS: List directory contents.\n\r"
-	defm "MONITOR: Enter machine code monitore.\n\r"
+	defm "MONITOR: Enter resident monitore.\n\r"
 	defm "MV: Move (rename) file.\n\r"
-	defm "RECEIVE FILENAME: Read data from serial port 2 and saveto FILENAME.\n\r"
+	defm "RECEIVE: Read data from serial port 2 and save to file.\n\r"
 	defm "RESET: Reset system.\n\r"
 	defm "RM: remove file.\n\r"
-	defm "SERLOAD ADR: Read data from serial port 2 to address ADR.\n\r"
+	defm "SERLOAD: Read data from serial port 2 to memory.\n\r"
 	defm "SET: Set system var.\n\r"
 	defm "SHOW: Show system var values.\n\r"
-	defm "SLEEP SEC: Sleep for SEC seconds.\n\r"
+	defm "SLEEP: Sleep for some seconds.\n\r"
 	defm "TYPE: Show file contents.\n\r"
-	defm "UPTIME: Print system uptime in seconds.\n\r"
+	defm "UPTIME: Show time since boot.\n\r"
 	defm "\0"
 	
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -551,11 +557,21 @@ SerialLoad:
 	ld		a, (dos_argc)
 	cp		1
 	jr		z, SerialLoad00
-	ld		hl, SerialLoadArgcErrorStr
+	;; Prepare and pring arg error
+	ld		hl, message_buffer
+	ld		de, serloadstr
+	call		StrCpy
+	ld		de, ExpectsExactlyOneArgStr
+	call		StrCpy
+	ld		de, AddressStr
+	call		StrCpy
+	ld		hl, message_buffer
 	call		PrintStringA
 	ret
-SerialLoadArgcErrorStr:
-	defm		"SERLOAD expects exactly one arg (4 digit hex address)\r\n\0"
+ExpectsExactlyOneArgStr:
+	defm		" expects exactly one arg \0"
+AddressStr:
+	defm		"(mem address)\r\n\0"
 SerialLoad00:
 	; Validate address
 	ld		hl, (dos_argv)
@@ -628,7 +644,15 @@ Set:
 	ld		a, (dos_argc)
 	cp		2
 	jr		z, SetValidate
-	ld		hl, SetArgcErrorStr
+	;; Argc error
+	ld		hl, message_buffer
+	ld		de, setstr
+	call		StrCpy
+	ld		de, ExpectsExactlyTwoArgsStr
+	call		StrCpy
+	ld		de, SetArgsStr
+	call		StrCpy
+	ld		hl, message_buffer
 	call		PrintStringA
 	ret
 SetValidate:
@@ -679,10 +703,12 @@ SetDoIt:
 	ld		(hl), b
 	ret
 
-SetArgcErrorStr:
-	defm		"SET expects exactly two args (one variable name, one value).\r\n\0"
+ExpectsExactlyTwoArgsStr:
+	defm		" expects exactly two args \0"
+SetArgsStr:
+	defm		"(one variable name, one value).\r\n\0"
 SetBadVarStr:
-	defm		"Unrecognised variable.  Run SHOW to see variables names.\r\n\0"
+	defm		"Unrecognised variable.  Run SHOW to see all vars.\r\n\0"
 
 execaddrstr:
 	defm		"EXECADDR\0"
@@ -748,11 +774,19 @@ Receive:
 	ld		a, (dos_argc)
 	cp		1
 	jr		z, ReceiveValidate
-	ld		hl, ReceiveArgcErrorStr
+	;; Argc error
+	ld		hl, message_buffer
+	ld		de, receivestr
+	call		StrCpy
+	ld		de, ExpectsExactlyOneArgStr
+	call		StrCpy
+	ld		de, FilenameStr
+	call		StrCpy
+	ld		hl, message_buffer
 	call		PrintStringA
 	ret
-ReceiveArgcErrorStr:
-	defm		"RECEIVE expects exactly one arg (8.3 filename)\r\n\0"
+FilenameStr:
+	defm		"(8.3 filename(s))\r\n\0"
 ReceiveValidate:
 	ld		hl, (dos_argv)
 	call		ValidateFilename
@@ -788,11 +822,17 @@ Mv:
 	ld		a, (dos_argc)
 	cp		2
 	jr		z, Mv00
-	ld		hl, MvArgcErrorStr
+	;; Argc error
+	ld		hl, message_buffer
+	ld		de, mvstr
+	call		StrCpy
+	ld		de, ExpectsExactlyTwoArgsStr
+	call		StrCpy
+	ld		de, FilenameStr
+	call		StrCpy
+	ld		hl, message_buffer
 	call		PrintStringA
 	ret
-MvArgcErrorStr:
-	defm		"MV expects exactly two args (both 8.3 filenames)\r\n\0"
 Mv00:
 	ld		hl, (dos_argv)
 	call		ValidateFilename
@@ -858,11 +898,17 @@ Rm:
 	ld		a, (dos_argc)
 	cp		1
 	jr		z, RmValidate
-	ld		hl, RmArgcErrorStr
+	;; Argc error
+	ld		hl, message_buffer
+	ld		de, rmstr
+	call		StrCpy
+	ld		de, ExpectsExactlyTwoArgsStr
+	call		StrCpy
+	ld		de, FilenameStr
+	call		StrCpy
+	ld		hl, message_buffer
 	call		PrintStringA
 	ret
-RmArgcErrorStr:
-	defm		"RM expects exactly one arg (filename)\r\n\0"
 RmValidate:
 	ld	hl, (dos_argv)
 	ld	(target_filename_ptr), hl
@@ -935,11 +981,17 @@ Cp:
 	ld		a, (dos_argc)
 	cp		2
 	jr		z, Cp00
-	ld		hl, CpArgcErrorStr
+	;; Argc error
+	ld		hl, message_buffer
+	ld		de, cpstr
+	call		StrCpy
+	ld		de, ExpectsExactlyOneArgStr
+	call		StrCpy
+	ld		de, FilenameStr
+	call		StrCpy
+	ld		hl, message_buffer
 	call		PrintStringA
 	ret
-CpArgcErrorStr:
-	defm		"CP expects exactly two args (both 8.3 filenames)\r\n\0"
 Cp00:
 	ld		hl, (dos_argv)
 	call		ValidateFilename
@@ -1028,11 +1080,17 @@ Type:
 	ld		a, (dos_argc)
 	cp		1
 	jr		z, TypeValidate
-	ld		hl, TypeArgcErrorStr
+	;; Argc error
+	ld		hl, message_buffer
+	ld		de, typestr
+	call		StrCpy
+	ld		de, ExpectsExactlyOneArgStr
+	call		StrCpy
+	ld		de, FilenameStr
+	call		StrCpy
+	ld		hl, message_buffer
 	call		PrintStringA
 	ret
-TypeArgcErrorStr:
-	defm		"TYPE expects exactly one arg (filename)\r\n\0"
 TypeValidate:
 	ld	hl, (dos_argv)
 	ld	(target_filename_ptr), hl
@@ -1085,11 +1143,19 @@ SleepDos:
 	ld		a, (dos_argc)
 	cp		1
 	jr		z, SleepDos00
-	ld		hl, SleepDosArgcErrorStr
+	;; Argc error
+	ld		hl, message_buffer
+	ld		de, sleepstr
+	call		StrCpy
+	ld		de, ExpectsExactlyOneArgStr
+	call		StrCpy
+	ld		de, SleepArgsStr
+	call		StrCpy
+	ld		hl, message_buffer
 	call		PrintStringA
 	ret
-SleepDosArgcErrorStr:
-	defm		"SLEEP expects exactly one arg (2 digit hex second count)\r\n\0"
+SleepArgsStr:
+	defm		" (2 digit hex second count)\r\n\0"
 SleepDos00:
 	; Validate address
 	ld		hl, (dos_argv)
