@@ -181,6 +181,8 @@ ValidateFilenameCountPeriodEnd:
 	jr		z, ValidateFilenameAllGood
 	; Extension must be 3 chars or less
 	; If we're here we *know* there is a period
+	pop		hl
+	push		hl
 	ld		a, "."
 	ld		bc, 12
 	cpir
