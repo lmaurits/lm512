@@ -329,16 +329,14 @@ TestLFN:
 ;;;;;;;;;;;;
 
 TestEndDir:
-	ld	hl, filename
-	ld	a, (hl)
+	ld	a, (filename)
 	cp	0x00
 	ret
 
 ;;;;;;;;;;;;
 
 TestFreeEntry:
-	ld	hl, filename
-	ld	a, (hl)
+	ld	a, (filename)
 	cp	0xE5
 	ret
 
