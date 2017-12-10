@@ -302,6 +302,7 @@ DumpOuter:
 	push		bc		; Store row counter
 	ld		hl, mon_linebuf
 	ld		b, 16		; We dump 16 columns
+	push		de		; Store mem pointer at start of row
 DumpInner:
 	; Print address
 	ld		a, d
@@ -322,10 +323,7 @@ DumpInner2:
 	ld		(hl), "\t"
 	inc		hl
 	;; Now rewind our memory pointer to do the ascii bit
-	ld		b, 16
-DumpDecLoop:
-	dec		de
-	djnz		DumpDecLoop
+	pop		de
 	; Print out ascii version of data
 	ld		b, 16		; We dump 16 columns
 DumpInner3:
@@ -337,13 +335,11 @@ DumpInner3:
 	cp		127
 	jr		z, HandlePrintable
 	jr		c, HandlePrintable
-	jr		HandleNonprintable
+HandleNonprintable:
+	ld		a, "."	; Clobber unprintable char with dot
 HandlePrintable:
 	ld		(hl), a
-	jr		DumpCont
-HandleNonprintable:
-	ld		(hl), "."
-DumpCont:
+	; Continue loop
 	inc		hl
 	djnz		DumpInner3
 	;; Now termiate this line
