@@ -296,38 +296,37 @@ Dump01:
 	ld		d, b
 	ld		e, c
 DumpPreOuter:
-	ld		b, 16
-	push		bc
+	ld		b, 16		; We dump 16 rows
 DumpOuter:
+	push		bc		; Store row counter
 	ld		hl, mon_linebuf
-	ld		b, 16
-DumpInner:	; Print address
+	ld		b, 16		; We dump 16 columns
+DumpInner:
+	; Print address
 	ld		a, d
 	call		StrfHex
 	ld		a, e
 	call		StrfHex
 	ld		(hl), "\t"
 	inc		hl
+	; Print out hex version of data
 DumpInner2:
 	ld		a, (de)		; Read from DE to A
 	inc		de
 	call		StrfHex
 	ld		(hl), " "
 	inc		hl
-	dec		b
-	ld		a, b
-	cp		0
-	jr		z, DumpASCII
-	jr		DumpInner2
-DumpASCII:
+	djnz		DumpInner2
+	;; Print Separator between hex and ASCII
 	ld		(hl), "\t"
 	inc		hl
-; Rewind
+	;; Now rewind our memory pointer to do the ascii bit
 	ld		b, 16
 DumpDecLoop:
 	dec		de
 	djnz		DumpDecLoop
-	ld		b, 16
+	; Print out ascii version of data
+	ld		b, 16		; We dump 16 columns
 DumpInner3:
 	ld		a, (de)		; Read from DE to A
 	inc		de
@@ -340,46 +339,41 @@ DumpInner3:
 	jr		HandleNonprintable
 HandlePrintable:
 	ld		(hl), a
-	inc		hl
 	jr		DumpCont
 HandleNonprintable:
 	ld		(hl), "."
-	inc		hl
-	jr		DumpCont
 DumpCont:
-	dec		b
-	ld		a, b
-	cp		0
-	jr		z, Dump03
-	jr		DumpInner3
-Dump03:
+	inc		hl
+	djnz		DumpInner3
+	;; Now termiate this line
 	call		TerminateLine
 	ld		hl, mon_linebuf
 	call		PrintStringA
-	pop		bc
-	dec		b
-	ld		a, b
-	cp		0
-	jr		z, Dump04
-	push		bc
-	jr		DumpOuter
+	pop		bc		; Retrieve row counter
+	djnz		DumpOuter	
+;; Ask to continue
 Dump04:
 	ld		hl, DumpContinueStr
 	call		PrintStringA
 	call		SERIAL_READ_A
 	push		af
 	call		ClearLeft
-	ld		a, "\r"
-	call		SERIAL_WRITE_A
 	pop		af
 	cp		" "
-	jr		z, DumpPreOuter
+	jr		z, DumpPreOuter	; Continue
 	cp		0x03	
-	ret		z
-	jr		Dump04
+	ret		z		; End
+	jr		Dump04		; Ask again
 	
 DumpContinueStr:
 	defm		"(press SPACE to continue, Ctrl-C to end)\0"
+ClearLeft:
+	ld		hl, ClearLeftCode
+	call		PrintStringA
+	ret
+ClearLeftCode:
+	defm		0x1B, 0x5b
+	defm		"1K\r\0"
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
