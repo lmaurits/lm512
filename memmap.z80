@@ -26,12 +26,12 @@ message_buffer:		defs 80
 
 ; Stuff for the inbuilt DOS
 dos_linebuf:		defs 80
-dos_argc:		defs 2
+dos_argc:		defs 1
 dos_argv:		defs 32
 
 ; Stuff for the monitor
 mon_linebuf:		defs 80
-mon_argc:		defs 2
+mon_argc:		defs 1
 mon_argv:		defs 2
 mon_stack_backup:	defs 22
 mon_reg_stack:		defs 2
