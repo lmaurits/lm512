@@ -31,17 +31,16 @@ CfReadSectors:
 	call		SetLBA
 	call		SendReadCommand
 	pop		af		; Restore sector count
+	ld		b, a		; Move sector count to B
 CfReadLoop:
-	ld		b, a	
 	call		WaitBusyData
-	ld		a, b
 	ld		c, .DATA	; port address
+	push		bc
 	ld		b, 0		; read 256 bytes at a time
 	inir				; Read first half of sector
 	inir				; Read second half of sector
-	dec		a		; Count off this sector
-	cp		0
-	jr		nz, CfReadLoop
+	pop		bc
+	djnz		CfReadLoop	; Loop
 	ret
 
 CfWriteSectors:
@@ -50,17 +49,16 @@ CfWriteSectors:
 	call		SetLBA
 	call		SendWriteCommand
 	pop		af		; Restore sector count
-CfWriteLoop:
 	ld		b, a	
+CfWriteLoop:
 	call		WaitBusyData
-	ld		a, b	
 	ld		c, .DATA	; port address
+	push		bc
 	ld		b, 0		; read 256 bytes at a time
 	otir				; Write first half of sector
 	otir				; Write second half of sector
-	dec		a		; Count off this sector
-	cp		0
-	jr		nz, CfWriteLoop
+	pop		bc
+	djnz		CfWriteLoop
 	ret
 
 SetLBA:
