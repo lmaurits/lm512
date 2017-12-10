@@ -81,3 +81,4 @@ inc_and_check_wrap:
 inc_and_check_wrap_store:
 	ld	(hl), a
 	pop	af		; Get back flags from the wrap comp
+	ret
