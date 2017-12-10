@@ -70,13 +70,9 @@ monpromptstr:
 	defm		"$ \0"
 
 MonitorHandleLine:
-; FIXME - reduce duplication here by sharing with DOS?
-	ld		hl, mon_linebuf	
-	call		ConvertToUpper
 	ld		bc, mon_argc
-	call		ParseLine
-	ld		bc, mondispatch_table
-	call		Dispatch
+	ld		de, mon_dispatch_table
+	call		HandleCommandLine
 	ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -103,7 +99,7 @@ outstr:		defm "OUT\0"
 nullstr:	defm "\0"
 
 ; Table linking command strings to function entry points
-mondispatch_table:
+mon_dispatch_table:
 	defw cfloadstr, CfLoad
 	defw cfsavestr, CfSave
 	defw continuestr, Continue

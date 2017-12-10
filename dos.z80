@@ -66,15 +66,9 @@ dos_promptstr:
 DosHandleLine:
 	; HANDLE A COMMAND LINE: CONVERT TO UPPERCASE,
 	; PARSE/TOKENISE LINE AND DISPATCH
-
-;FIXME - can I get rid of the ld hl, dos_linebuf (it's setup
-;before the call above) and then reuse this in Batch?)
-	ld		hl, dos_linebuf	
-	call		ConvertToUpper
 	ld		bc, dos_argc
-	call		ParseLine
-	ld		bc, dos_dispatch_table
-	call		Dispatch
+	ld		de, dos_dispatch_table
+	call		HandleCommandLine
 	ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -179,11 +173,9 @@ BatchLoop:
 	dec		hl
 	ld		(hl), "\0"
 	ld		hl, (line_start)
-	call		ConvertToUpper
 	ld		bc, dos_argc
-	call		ParseLine
-	ld		bc, dos_dispatch_table
-	call		Dispatch
+	ld		de, dos_dispatch_table
+	call		DosHandleLine
 	ld		hl, (line_end)
 	ld		(line_start), hl
 	pop		bc

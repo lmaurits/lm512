@@ -36,8 +36,7 @@ ParseLine00:
 	inc		a
 	push		af
 	; Prepare for next StrTok...
-	ld		h, d
-	ld		l, e
+	ex		de, hl
 	push		bc
 	call		StrTok
 	jr		ParseLine00
@@ -84,6 +83,17 @@ MapS2A01:
 Dispatch:
 	call		MapString2Address
 	jp		(hl)
+
+HandleCommandLine:
+	; HL - command string pointer
+	; DE - dispatch table pointer
+	; BC - argc/argv structure
+	call		ConvertToUpper
+	push		de
+	call		ParseLine
+	pop		bc
+	call		Dispatch
+	ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
