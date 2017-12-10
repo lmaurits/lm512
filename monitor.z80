@@ -278,8 +278,9 @@ Dump:
 	cp		1
 	jr		z, Dump00
 	;; Argc error
-	ld		hl, message_buffer
 	ld		de, dumpstr
+OneMemAddressArgcError:
+	ld		hl, message_buffer
 	call		StrCpy
 	ld		de, ExpectsExactlyOneArgStr
 	call		StrCpy
@@ -442,16 +443,8 @@ Jump:
 	cp		1
 	jr		z, Jump00
 	;; Argc error
-	ld		hl, message_buffer
 	ld		de, jumpstr
-	call		StrCpy
-	ld		de, ExpectsExactlyOneArgStr
-	call		StrCpy
-	ld		de, AddressStr
-	call		StrCpy
-	ld		hl, message_buffer
-	call		PrintStringA
-	ret
+	jp		OneMemAddressArgcError
 Jump00:
 	ld		hl, (mon_argv)
 	call		ValidateAddress
@@ -519,15 +512,8 @@ Memed:
 	cp		1
 	jr		z, Memed00
 	;; Argc error
-	ld		hl, message_buffer
 	ld		de, memedstr
-	call		StrCpy
-	ld		de, ExpectsExactlyOneArgStr
-	call		StrCpy
-	ld		de, AddressStr
-	call		StrCpy
-	ld		hl, message_buffer
-	call		PrintStringA
+	jp		OneMemAddressArgcError
 	ret
 Memed00:
 	; Validate, parse and push destination

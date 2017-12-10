@@ -6,7 +6,15 @@
 
 include 'fat.z80'
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; DOS CORE
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 Dos:
+DosInit:
+	; INITIALISE EVERYTHING
 	
 	; Print welcome message
 	ld hl, welcomestr
@@ -25,6 +33,9 @@ Dos:
 	welcomestr: defm "Welcome to LM-512 microcomputer system.\n\r\0"
 
 DosAutoExec:
+	; CHECK FOR FILE NAMED AUTOEXEC.BAT
+	; IF FOUND, EXECUTE AS BATCH FILE
+
 	ld		hl, DosAutoExecStr
 	ld		(target_filename_ptr), hl
 	call		FindFile
@@ -35,7 +46,9 @@ DosAutoExecStr:
 	defm		"AUTOEXEC.BAT\0"
 
 DosLoop:
-; Infinite loop of read, parse, dispatch
+	; INFINITE LOOP OF READING A COMMAND LINE,
+	; PARSING IT AND DISPATCHING THE COMMAND
+
 	ld		hl, dos_promptstr
 	call		PrintStringA
 	ld		hl, dos_linebuf
@@ -51,6 +64,11 @@ dos_promptstr:
 	defm		"> \0"
 
 DosHandleLine:
+	; HANDLE A COMMAND LINE: CONVERT TO UPPERCASE,
+	; PARSE/TOKENISE LINE AND DISPATCH
+
+;FIXME - can I get rid of the ld hl, dos_linebuf (it's setup
+;before the call above) and then reuse this in Batch?)
 	ld		hl, dos_linebuf	
 	call		ConvertToUpper
 	ld		bc, dos_argc
@@ -125,8 +143,9 @@ Batch:
 	cp		1
 	jr		z, BatchValidate
 	;; Argc error
-	ld		hl, message_buffer
 	ld		de, batchstr
+OneFilenameArgcError:
+	ld		hl, message_buffer
 	call		StrCpy
 	ld		de, ExpectsExactlyOneArgStr
 	call		StrCpy
@@ -136,53 +155,49 @@ Batch:
 	call		PrintStringA
 	ret
 BatchValidate:
-	ld	hl, (dos_argv)
+	ld		hl, (dos_argv)
 	call		ValidateFilename
 	ret		nz
 
-	ld	hl, (dos_argv)
-	ld	(target_filename_ptr), hl
+	ld		(target_filename_ptr), hl
 	call		FindFile
 	jp		nz, BadFileCallback
 BatchCallback:
 	; At this point, we've matched
 	; Read the file into memory
 	ld		hl, (fileaddr)
-	call	ReadFile
+	call		ReadFile
 	ld		hl, (fileaddr)
-	ld	(line_start), hl
-	ld	bc, (size_in_bytes)
+	ld		(line_start), hl
+	ld		bc, (size_in_bytes)
 BatchLoop:
-	ld	a, 0x0A		; Newline
+	ld		a, 0x0A		; Newline
 	cpir
-	ld	(line_end), hl
-	push	bc
+	ld		(line_end), hl
+	push		bc
 	; Overwrite newline with string terminator
-	dec	hl
-	ld	(hl), "\0"
-	ld	hl, (line_start)
+	dec		hl
+	ld		(hl), "\0"
+	ld		hl, (line_start)
 	call		ConvertToUpper
 	ld		bc, dos_argc
 	call		ParseLine
 	ld		bc, dos_dispatch_table
 	call		Dispatch
-	ld	hl, (line_end)
-	ld	(line_start), hl
-	pop	bc
-	ld	a, b
-	cp	0
-	jr	nz, BatchLoop
-	ld	a, C
-	cp	0
-	jr	nz, BatchLoop
-	ret
+	ld		hl, (line_end)
+	ld		(line_start), hl
+	pop		bc
+	ld		a, b
+	or		c
+	ret		z
+	jr		BatchLoop
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 Date:
 	ld		a, (dos_argc)
 	cp		0
-	jr		z, DateGet
+	jp		z, DateGet
 	cp		1
 	jr		z, DateSet
 	ld		hl, DateArgcErrStr
@@ -195,12 +210,6 @@ DateSet:
 	call		ValidateDateString
 	ret		nz
 	call		SetTimeFromString
-DateGet:
-	ld hl, dos_linebuf
-	call BuildTimeStr
-	ld hl, dos_linebuf
-	call PrintStringA
-	ret
 ValidateDateString:
 	call		StrLen
 	cp		12
@@ -242,7 +251,12 @@ SetTimeFromString:
 	ld		l, a
 	call		RTC_WRITE
 	ret
-
+DateGet:
+	ld hl, 		message_buffer
+	call		BuildTimeStr
+	ld hl,		message_buffer
+	call 		PrintStringA
+	ret
 BuildTimeStr:
 	push		hl		; Save string pointer
 	call		RTC_READ
@@ -309,12 +323,7 @@ TimeStrLoop:
 	pop 		bc
 	ld		a, b
 	call WriteComponent
-	ld (hl), "\n"
-	inc hl
-	ld (hl), "\r"
-	inc hl
-	ld (hl), "\0"
-	inc hl
+	call TerminateLine
 	ret
 
 WriteComponent:
@@ -336,19 +345,36 @@ WriteComponent:
 
 MonthStrings:
 	defm	"JanFebMarAprMayJunJulAugSepOctNovDec"
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 Flash:
+	ld		a, (dos_argc)
+	cp		1
+	jr		z, FlashValidate
+	;; Argc error
+	ld		de, flashstr
+	call		OneFilenameArgcError
+	ret
+FlashValidate:
+	ld		hl, (dos_argv)
+	call		ValidateFilename
+	ret		nz
+	; HL points to a filename we want to load
+	; Save it for later
+	ld		(target_filename_ptr), hl
+	call		FindFile
+	jp		nz, BadFileCallback
 	;; First, warn the user
-	ld	hl, FlashNotice
-	call	PrintStringA
+	ld		hl, FlashNotice
+	call		PrintStringA
 	;; Now copy the core of this function into RAM
 	;; where it will not get clobbered
-	ld	hl, FlashRelocatablePayload
-	ld	de, 0x8000	; Ignore FILEADDR, this is terminal!
-	ld	bc, FlashRelocatablePayloadEnd - FlashRelocatablePayload	; Size of payload
+	ld		hl, FlashRelocatablePayload
+	ld		de, 0x8000	; Ignore FILEADDR, this is terminal!
+	ld		bc, FlashRelocatablePayloadEnd - FlashRelocatablePayload	; Size of payload
 	ldir			; Relocate
-	jp	0x8000		; Do it!
+	jp		0x8000		; Do it!
 FlashNotice:
 defm	"Rewriting firmware.  Good luck!\r\n\0"
 
@@ -356,44 +382,44 @@ FlashRelocatablePayload:
 	; NB: This is loaded into RAM at address 0x9000
 	; But the assembler doesn't know this
 	; So ONLY use jr, not jp, below
-	ld	hl, 0x9000
-	ld	(fileaddr), hl
-	call	DosLoadFile	; Get new file in mem
+	ld		hl, 0x9000
+	ld		(fileaddr), hl
+	call		DosLoadFile	; Get new file in mem
 	; Set BC to byte count
-	ld	bc, (size_in_bytes)
+	ld		bc, (size_in_bytes)
 	; Set HL to location of new file
-	ld	hl, 0x9000
+	ld		hl, 0x9000
 	; Set DE to destination
-	ld	de, $0000	; DEST in ROM is $0000
+	ld		de, $0000	; DEST in ROM is $0000
 	; Disable interrupts!
 	di
 FlashLoop:
-	ld	b, (hl)			; Get the new byte in B
-	ld	a, (de)			; Get the current byte in A
-	cp	b			; Compare 'em
-	jr	z, delay_loop_end	; Don't overwrite needlessly
-	ld	a, b
-	ld	(de), a
+	ld		b, (hl)		; Get the new byte in B
+	ld		a, (de)		; Get the current byte in A
+	cp		b		; Compare 'em
+	jr		z, delay_loop_end; Don't overwrite needlessly
+	ld		a, b
+	ld		(de), a
 	;;; Hacky delay loop
 	exx
-	ld	de, $071C
+	ld		de, $071C
 delay_loop:
 	nop
-	dec	de
-	ld	a, d
-	or	e
-	jr	nz, delay_loop
+	dec		de
+	ld		a, d
+	or		e
+	jr		nz, delay_loop
 	exx
 delay_loop_end:
 	;;; Back to copying...
-	inc	hl
-	inc	de
-	dec	bc
-	ld	a, b
-	or	c
-	jr	nz, FlashLoop
+	inc		hl
+	inc		de
+	dec		bc
+	ld		a, b
+	or		c
+	jr		nz, FlashLoop
 	; Reset when done
-	jp $0000
+	jp 		$0000
 FlashRelocatablePayloadEnd:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -747,16 +773,8 @@ Receive:
 	cp		1
 	jr		z, ReceiveValidate
 	;; Argc error
-	ld		hl, message_buffer
 	ld		de, receivestr
-	call		StrCpy
-	ld		de, ExpectsExactlyOneArgStr
-	call		StrCpy
-	ld		de, FilenameStr
-	call		StrCpy
-	ld		hl, message_buffer
-	call		PrintStringA
-	ret
+	jp		OneFilenameArgcError
 FilenameStr:
 	defm		"(8.3 filename(s))\r\n\0"
 ReceiveValidate:
@@ -795,8 +813,9 @@ Mv:
 	cp		2
 	jr		z, Mv00
 	;; Argc error
-	ld		hl, message_buffer
 	ld		de, mvstr
+TwoFilenamesArgcError:
+	ld		hl, message_buffer
 	call		StrCpy
 	ld		de, ExpectsExactlyTwoArgsStr
 	call		StrCpy
@@ -806,6 +825,7 @@ Mv:
 	call		PrintStringA
 	ret
 Mv00:
+ValidateTwoFilenames:
 	ld		hl, (dos_argv)
 	call		ValidateFilename
 	ret		nz
@@ -849,16 +869,8 @@ Rm:
 	cp		1
 	jr		z, RmValidate
 	;; Argc error
-	ld		hl, message_buffer
 	ld		de, rmstr
-	call		StrCpy
-	ld		de, ExpectsExactlyOneArgStr
-	call		StrCpy
-	ld		de, FilenameStr
-	call		StrCpy
-	ld		hl, message_buffer
-	call		PrintStringA
-	ret
+	jp		OneFilenameArgcError
 RmValidate:
 	ld		hl, (dos_argv)
 	ld		(target_filename_ptr), hl
@@ -929,16 +941,8 @@ Cp:
 	cp		2
 	jr		z, Cp00
 	;; Argc error
-	ld		hl, message_buffer
 	ld		de, cpstr
-	call		StrCpy
-	ld		de, ExpectsExactlyOneArgStr
-	call		StrCpy
-	ld		de, FilenameStr
-	call		StrCpy
-	ld		hl, message_buffer
-	call		PrintStringA
-	ret
+	jp		TwoFilenamesArgcError
 Cp00:
 	ld		hl, (dos_argv)
 	call		ValidateFilename
@@ -966,16 +970,8 @@ DosLoadFile:
 	cp		1
 	jr		z, LoadValidate
 	;; Argc error
-	ld		hl, message_buffer
 	ld		de, loadstr
-	call		StrCpy
-	ld		de, ExpectsExactlyOneArgStr
-	call		StrCpy
-	ld		de, FilenameStr
-	call		StrCpy
-	ld		hl, message_buffer
-	call		PrintStringA
-	ret
+	jp		OneFilenameArgcError
 LoadValidate:
 	ld		hl, (dos_argv)
 	call		ValidateFilename
@@ -1027,16 +1023,8 @@ Type:
 	cp		1
 	jr		z, TypeValidate
 	;; Argc error
-	ld		hl, message_buffer
 	ld		de, typestr
-	call		StrCpy
-	ld		de, ExpectsExactlyOneArgStr
-	call		StrCpy
-	ld		de, FilenameStr
-	call		StrCpy
-	ld		hl, message_buffer
-	call		PrintStringA
-	ret
+	jp		OneFilenameArgcError
 TypeValidate:
 	ld	hl, (dos_argv)
 	ld	(target_filename_ptr), hl
