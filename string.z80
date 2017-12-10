@@ -284,6 +284,11 @@ Read8bit:
         or		d		; Add back top bits
 	inc		hl		; Advance for next guy
         ret
+Hex12:	sub		a, '0'
+        cp		10
+        ret		c
+        sub		a,'A'-'0'-10
+        ret
 
 Read16bit:	
 	; HL is a pointer to a four-char string
@@ -294,6 +299,8 @@ Read16bit:
 	call		Read8bit
 	ld		c, a
 	ret
+
+;;;;;;;;;;;;;;;;;;;;;;;;
 
 ReadBCDByte:
 	; HL is a pointer to a two-char string
@@ -313,11 +320,6 @@ ReadBCDByte:
 	or		b
 	ret
 
-Hex12:	sub		a, '0'
-        cp		10
-        ret		c
-        sub		a,'A'-'0'-10
-        ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 	
