@@ -421,18 +421,18 @@ Help:
 	call PrintStringA
 	ret
 	helpmessage:	defm "Monitor commands:\n\r"
-	defm "BANK PG: Bank switch top 32KB.\n\r"
-	defm "CFLOAD ADDR SECT NSECS: Read sectors from CF.\n\r"
-	defm "CFSAVE SECT ADDR NSECS: Write sectors to CF.\n\r"
-	defm "CONTINUE: Resume program execution.\n\r"
-	defm "DUMP ADDR: Hexdump 256 bytes of memory.\n\r"
-	defm "IN PORT: Read byte from I/O port.\n\r"
-	defm "JUMP ADDR: Jump to address.\n\r"
+	defm "BANK PG Bank switch top 32KB\n\r"
+	defm "CFLOAD ADDR SECT NSECS: Read sectors from CF\n\r"
+	defm "CFSAVE SECT ADDR NSECS: Write sectors to CF\n\r"
+	defm "CONTINUE: Resume program execution\n\r"
+	defm "DUMP ADDR: Hexdump 256 bytes of memory\n\r"
+	defm "IN PORT: Read byte from I/O port\n\r"
+	defm "JUMP ADDR: Jump to address\n\r"
 	defm "MEMCPY DEST SRC NBYTES: Copy memory\n\r"
 	defm "MEMED ADDR: Edit memory\n\r"
-	defm "OUT PORT VAL: Write byte to I/O port.\n\r"
-	defm "REGISTERS: Register dump.\n\r"
-	defm "STACK: Stack trace.\n\r"
+	defm "OUT PORT VAL: Write byte to I/O port\n\r"
+	defm "REGISTERS: Register dump\n\r"
+	defm "STACK: Stack trace\n\r"
 	defm "\0"
 	
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
