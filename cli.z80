@@ -9,22 +9,18 @@ ParseLine:
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	; Prepare to read arguments
 	; Set argc to 0
-	push		hl
-	push		bc
-	inc		bc
-	inc		bc
+	push		hl		; Keep string pointer
+	push		bc		; Keep start of argcv struct
+	inc		bc		; Skip counter
 	ld		a, 0
-	push		af
-	; Read command name
-	push		bc
-	call StrTok
+	push		af		; Keep arg count on stack
 ParseLine00:
+	call StrTok
 	; If string ended in a null, we're done
 	cp		"\0"
 	jr		z, ParseLine01
-	pop		bc
 	; DE now points to the start of the first arg
-	; Load this into IX and increment
+	; Load this into (BC) and increment
 	ld		a, e
 	ld		(bc), a
 	inc		bc
@@ -37,15 +33,12 @@ ParseLine00:
 	push		af
 	; Prepare for next StrTok...
 	ex		de, hl
-	push		bc
-	call		StrTok
 	jr		ParseLine00
 ParseLine01:
-	pop		bc
-	pop		af
-	pop		bc
-	ld		(bc), a
-	pop		hl
+	pop		af		; Get arg count
+	pop		bc		; Set BC back to start of argcv
+	ld		(bc), a		; Store argc
+	pop		hl		; Get string pointer back
 	ret
 
 MapString2Address:
