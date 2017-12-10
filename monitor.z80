@@ -70,6 +70,7 @@ monpromptstr:
 	defm		"$ \0"
 
 MonitorHandleLine:
+; FIXME - reduce duplication here by sharing with DOS?
 	ld		hl, mon_linebuf	
 	call		ConvertToUpper
 	ld		bc, mon_argc
@@ -560,44 +561,23 @@ Registers:
 	ld		hl, reg_labels
 	call		PrintStringA
 	ld		de, mon_reg_stack
-	ld		hl, mon_linebuf
+	ld		b, 8
 	call		RegisterPrint
 
 	ld		hl, alt_reg_labels
 	call		PrintStringA
-	ld		hl, mon_linebuf
+	ld		b, 8
 	call		RegisterPrint
 
 	ld		hl, i_reg_labels
 	call		PrintStringA
-	ld		hl, mon_linebuf
-	ld		a, (de)
-	dec		de
-	call		StrfHex
-	ld		(hl), " "
-	inc		hl
-	ld		a, (de)
-	dec		de
-	call		StrfHex
-	ld		(hl), " "
-	inc		hl
-	ld		a, (de)
-	dec		de
-	call		StrfHex
-	ld		(hl), " "
-	inc		hl
-	ld		a, (de)
-	call		StrfHex
-	ld		(hl), " "
-	inc		hl
-	call		TerminateLine
-	ld		hl, mon_linebuf
-	call		PrintStringA
+	ld		b, 4
+	call		RegisterPrint
 
 	ret
 
 RegisterPrint:
-	ld		b, 8
+	ld		hl, mon_linebuf
 RegisterPrintLoop:
 	ld		a, (de)
 	dec		de
