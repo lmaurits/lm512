@@ -3,19 +3,19 @@ ConvertToUpper:
 ConvertToUpper00:
 	ld a, (hl)
 	cp $0
-	jp		z, ConvertToUpper03
+	jr		z, ConvertToUpper03
 	cp 'a'
-	jp z, ConvertToUpper01
-	jp c, ConvertToUpper02
+	jr z, ConvertToUpper01
+	jr c, ConvertToUpper02
 	cp 'z'
-	jp z, ConvertToUpper01
-	jp nc, ConvertToUpper02
+	jr z, ConvertToUpper01
+	jr nc, ConvertToUpper02
 ConvertToUpper01:
 	sub a, 32
 	ld (hl), a
 ConvertToUpper02:
 	inc hl
-	jp ConvertToUpper00
+	jr ConvertToUpper00
 ConvertToUpper03:
 	pop		hl
 	ret
@@ -57,18 +57,10 @@ ReadLineABackspace:
 	jr		z, ReadLineABackspaceEnd
 	dec		hl
 	dec		b
-	ld		a, 0x1B
-	call		SERIAL_WRITE_A
-	ld		a, 0x5B
-	call		SERIAL_WRITE_A
-	ld		a, "D"
-	call		SERIAL_WRITE_A
-	ld		a, 0x1B
-	call		SERIAL_WRITE_A
-	ld		a, 0x5B
-	call		SERIAL_WRITE_A
-	ld		a, "P"
-	call		SERIAL_WRITE_A
+	push		hl
+	ld		hl, BackSpaceControlSeq
+	call		PrintStringA
+	pop		hl
 	; Read next char
 	jr		ReadLineA00
 ReadLineABackspaceEnd:
@@ -77,6 +69,8 @@ ReadLineABackspaceEnd:
 	ld		a, "g"
 	call		SERIAL_WRITE_A
 	jr		ReadLineA00
+BackSpaceControlSeq:
+	defm		0x1B, 0x5B, "D", 0x1B, 0x5B, "P", 0x00
 ReadLineA01:
 	; Handle Enter
 	ld		a, "\n"
@@ -88,12 +82,10 @@ ReadLineA01:
 	ret
 ReadLineA02:
 	; Handle Ctrl-C
-	ld		a, "\r"
-	call		SERIAL_WRITE_A
-	ld		a, "\n"
-	call		SERIAL_WRITE_A
-	dec		hl
-	ld		(hl), "\0"
+	ld		hl, message_buffer
+	call TerminateLine
+	ld		hl, message_buffer
+	call		PrintStringA
 	pop		hl
 	or		1	; Reset zero flag
 	ret
@@ -120,7 +112,7 @@ StrCmp:
 	ret nz
 	inc hl
 	inc de
-	jp StrCmp
+	jr StrCmp
 
 StrictStrCmp:
 	; Load next chars of each string
@@ -244,8 +236,8 @@ StrTok01:
 	ld		(hl), "\0"	; Terminate string
 StrTok02:
 	inc		hl		; Advance HL to	start of next string
-	ld		d, h		; Store start address of next string in DE
-	ld		e, l		; Store start address of next string in DE
+	; Put start address of next string in DE
+	ex		de, hl
 	pop		hl		; Pop original string start
 	ret
 
@@ -254,7 +246,7 @@ SkipWhitespace:
 	cp ' '
 	ret nz
 	inc hl
-	jp SkipWhitespace
+	jr SkipWhitespace
 
 StrStrip:
 	ld a,(hl)

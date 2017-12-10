@@ -608,7 +608,7 @@ SerialLoadCore:
 	call		SERIAL_WRITE_B
 	call		SERIAL_READ_B
 	cp		proto_hello_ack
-	jp		z, SerialLoad01
+	jr		z, SerialLoad01
 SerialLoad01:
 transfer_outer_loop:
 	ld		a, proto_bytes
@@ -623,7 +623,7 @@ transfer_outer_loop:
 	ex		de, hl
 	; Make sure we wren't just told there are no more bytes
 	cp		0
-	jp		z, SerialLoadEnd
+	jr		z, SerialLoadEnd
 	ld		a, proto_send
 	call		SERIAL_WRITE_B
 transfer_inner_loop:
