@@ -263,6 +263,7 @@ CfSaveArgStr:
 Continue:
 	; Pop the return address which leads back to the monitor loop
 	pop		hl	; Break out of Dispatch
+	pop		hl	; Break out of HandleCommandLine
 	pop		hl	; Break out of MonitorHandleLine
 	; Break out of monitor loop
 	jp		MonitorExit
