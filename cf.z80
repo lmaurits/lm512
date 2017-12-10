@@ -80,31 +80,33 @@ SetLBA:
 	out		(.LBA3), a
 	call		WaitBusy
 	ret
+
 SetSectorCount:
 	push		af
 	call		WaitBusy
 	pop		af
 	out		(.SECCO), a
 	ret
-SendReadCommand:
+
+
+SendDataCommand:
+	; Call with command in A
 	call		WaitBusyReady	; Make sure drive is ready for command
-	ld		a, $20		; Prepare read command
-	out		(.CMD), a		; Send read command
+	out		(.CMD), a	; Send command
 	call		WaitBusyData	; Wait until data is ready to be read
 	in		a, (.STAT)		; Read status
 	and		%00000001		; mask off error bit
-	jp		nz, SendReadCommand	; Try again if error
+	jp		nz, SendDataCommand	; Try again if error
 	ret
 
+SendReadCommand:
+	ld		a, $20		; Prepare read command
+	call		SendDataCommand
+
 SendWriteCommand:
-	call		WaitBusyReady	; Make sure drive is ready for command
-	ld		a, $30		; Prepare read command
-	out		(.CMD), a		; Send read command
-	call		WaitBusyData	; Wait until data is ready to be read
-	in		a, (.STAT)		; Read status
-	and		%00000001		; mask off error bit
-	jp		nz, SendWriteCommand	; Try again if error
-	ret
+	ld		a, $30		; Prepare write command
+	call		SendDataCommand
+
 WaitBusy:
 	in		a, (.STAT)		; Read status
 	and		%10000000		;mask off busy bit
