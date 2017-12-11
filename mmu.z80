@@ -1,2 +1,7 @@
+GetMemBank:
+	ld	a, (mem_bank)
+	ret
 SetMemBank:
+	ld	(mem_bank), a
 	out	(MMUBASE), a
+	ret

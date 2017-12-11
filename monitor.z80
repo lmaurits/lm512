@@ -123,8 +123,10 @@ mon_dispatch_table:
 
 Bank:
 	ld		a, (mon_argc)
+	cp		0
+	jr		z, BankGet
 	cp		1
-	jr		z, Bank00
+	jr		z, BankSet
 	;; Argc error
 	ld		hl, message_buffer
 	ld		de, bankstr
@@ -138,14 +140,20 @@ Bank:
 	ret
 BankArgsStr:
 	defm		"(mem bank).\r\n\0"
-Bank00:
+BankGet:
+	call		GetMemBank
+	ld		hl, message_buffer
+	call		StrfHex
+	call		TerminateLine
+	ld		hl, message_buffer
+	call		PrintStringA
+	ret
+BankSet:
 	ld		hl, (mon_argv)
 	call		ValidateValue
-	jr		z, Bank01
-	ret
-Bank01:
+	ret		nz
 	call		Read8bit	
-	out		(0), a
+	call		SetMemBank
 	ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

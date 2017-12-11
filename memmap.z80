@@ -13,6 +13,7 @@ SYSSTACK:		equ 0x7FFF
 
 org			RAMBASE
 int_vector:		defs 16
+mem_bank:		defs 1
 ticks:			defs 1
 alarm_tick:		defs 1
 alarm_countdown:	defs 1

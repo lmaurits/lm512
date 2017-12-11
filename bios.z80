@@ -46,6 +46,7 @@ include 'rtc.z80'
 Main:
 	ld		sp, SYSSTACK
 	ld		a, 0
+	call		SetMemBank
 	ld		(ticks), a
 	ld		(alarm_flag), a
 	ld		(uptime_secs), a
