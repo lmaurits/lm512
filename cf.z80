@@ -91,7 +91,9 @@ SetSectorCount:
 
 SendDataCommand:
 	; Call with command in A
+	push		af
 	call		WaitBusyReady	; Make sure drive is ready for command
+	pop		af
 	out		(.CMD), a	; Send command
 	call		WaitBusyData	; Wait until data is ready to be read
 	in		a, (.STAT)		; Read status
@@ -102,10 +104,12 @@ SendDataCommand:
 SendReadCommand:
 	ld		a, $20		; Prepare read command
 	call		SendDataCommand
+	ret
 
 SendWriteCommand:
 	ld		a, $30		; Prepare write command
 	call		SendDataCommand
+	ret
 
 WaitBusy:
 	in		a, (.STAT)		; Read status
