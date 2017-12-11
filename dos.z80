@@ -773,6 +773,9 @@ ReceiveValidate:
 	ld		hl, (dos_argv)
 	call		ValidateFilename
 	ret		nz
+	;; Check for collisions!
+	call		FindFile
+	jr		z, ReceiveCollision
 	;; First download the file
 	ld		hl, (fileaddr)
 	call		SerialLoadCore
@@ -783,6 +786,12 @@ ReceiveValidate:
 	ld		de, (dos_argv)
 	call		WriteFile
 	ret
+ReceiveCollision:
+	ld		hl, FileExistsStr
+	call		PrintStringA
+	ret
+FileExistsStr:
+	defm		"File exists!\r\n\0"
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
