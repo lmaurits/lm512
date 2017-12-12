@@ -704,10 +704,26 @@ execaddrstr:
 	defm		"EXECADDR\0"
 fileaddrstr:
 	defm		"FILEADDR\0"
+int1str:defm		"INT1\0"
+int2str:defm		"INT2\0"
+int3str:defm		"INT3\0"
+int4str:defm		"INT4\0"
+int5str:defm		"INT5\0"
+int6str:defm		"INT6\0"
+int7str:defm		"INT7\0"
+int8str:defm		"INT8\0"
 
 SetTable:
 	defw execaddrstr, execaddr
 	defw fileaddrstr, fileaddr
+	defw int1str, int_vector
+	defw int2str, int_vector+2
+	defw int3str, int_vector+4
+	defw int4str, int_vector+6
+	defw int5str, int_vector+8
+	defw int6str, int_vector+10
+	defw int7str, int_vector+12
+	defw int8str, int_vector+14
 	defw nullstr, 0x0000
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
