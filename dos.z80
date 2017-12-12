@@ -789,9 +789,8 @@ ReceiveValidate:
 	ld		hl, (dos_argv)
 	call		ValidateFilename
 	ret		nz
-	;; Check for collisions!
-	call		FindFile
-	jr		z, ReceiveCollision
+	call		HandleOverwrite
+	ret		nz
 	;; First download the file
 	ld		hl, (fileaddr)
 	call		SerialLoadCore
@@ -802,12 +801,47 @@ ReceiveValidate:
 	ld		de, (dos_argv)
 	call		WriteFile
 	ret
-ReceiveCollision:
+
+HandleOverwrite:
+	;; Check for collisions!
+	call		FindFile
+	jr		z, HandleOverwriteCore
+	cp		a
+	ret
+HandleOverwriteCore:
 	ld		hl, FileExistsStr
 	call		PrintStringA
+	jr		HandleOverwriteAskQuickEnter
+HandleOverwriteAskLoop:
+	ld		hl, YNPromptStr
+	call		PrintStringA
+HandleOverwriteAskQuickEnter:
+	ld		hl, message_buffer
+	call		SERIAL_READ_A
+	ld		(hl), a
+	inc		hl
+	call		TerminateLine
+	ld		hl, message_buffer
+	call		ConvertToUpper
+	call		PrintStringA
+	ld		hl, message_buffer
+	ld		a, (hl)
+	cp		"Y"
+	jr		z, HandleOverwriteApprove
+	cp		"N"
+	jr		z, HandleOverwriteDeny
+	jr		HandleOverwriteAskLoop
+HandleOverwriteApprove:
+	call		DeleteFile
+	cp		a ; Set zero flag
+	ret
+HandleOverwriteDeny:
+	or		1 ; Clear zero flag
 	ret
 FileExistsStr:
-	defm		"File exists!\r\n\0"
+	defm		"File exists!  Overwrite? (Y/N) \0"
+YNPromptStr:
+	defm		"Enter Y or N: \0"
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
@@ -848,6 +882,8 @@ ValidateTwoFilenames:
 	ret		nz
 	ld		hl, (dos_argv+2)
 	call		ValidateFilename
+	ret		nz
+	call		HandleOverwrite
 	ret		nz
 	; HL points to a filename we want to rename
 	ld		hl, (dos_argv)
@@ -900,34 +936,7 @@ RmValidate:
 	call	FindFile
 	jp	nz, BadFileCallback
 	; Dent *should* now be pointed at our target
-	; First, remove the directory entry
-	call	MakeAvailEntry
-	call	UpdateRootDir
-	call	SaveRootDir
-	; Now free up the blocks in the FAT
-	ld	hl, (starting_cluster)
-	call	SeekCluster
-RmLoop:
-	call	TestEOF
-	push	af			; Preserve results of EOF test
-	ld	hl, (fat_mem_index)	; Get pointer to current cluster
-	ld	e, (hl)			; Read next cluster into DE
-	inc	hl
-	ld	d, (hl)
-	push	de
-	;; Mark this cluster free
-	ld	hl, (fat_mem_index)
-	ld	a, 0x00
-	ld	(hl), a
-	inc	hl
-	ld	(hl), a
-	call	SaveFat
-	;; Get next cluster back in HL
-	pop	hl
-	pop	AF			; Restore results of EOF test
-	ret	z			; If this was the last cluster, return
-	call	SeekCluster		; Otherwise, jump to the next
-	jr	nz,RmLoop
+	call	DeleteFile
 	ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -966,6 +975,8 @@ Cp00:
 	ret		nz
 	ld		hl, (dos_argv+2)
 	call		ValidateFilename
+	ret		nz
+	call		HandleOverwrite
 	ret		nz
 	ld	hl, (dos_argv)
 	call	LoadFile

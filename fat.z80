@@ -654,3 +654,38 @@ FindFileNotFound:
 	ld	a, 0xFF	; Fail!
 	cp	0
 	ret
+
+
+;;;;;;;;;;
+
+
+DeleteFile:
+	; Delete file corresponding to the current directory entry
+	; First, remove the directory entry
+	call	MakeAvailEntry
+	call	UpdateRootDir
+	call	SaveRootDir
+	; Now free up the blocks in the FAT
+	ld	hl, (starting_cluster)
+	call	SeekCluster
+RmLoop:
+	call	TestEOF
+	push	af			; Preserve results of EOF test
+	ld	hl, (fat_mem_index)	; Get pointer to current cluster
+	ld	e, (hl)			; Read next cluster into DE
+	inc	hl
+	ld	d, (hl)
+	push	de
+	;; Mark this cluster free
+	ld	hl, (fat_mem_index)
+	ld	a, 0x00
+	ld	(hl), a
+	inc	hl
+	ld	(hl), a
+	call	SaveFat
+	;; Get next cluster back in HL
+	pop	hl
+	pop	AF			; Restore results of EOF test
+	ret	z			; If this was the last cluster, return
+	call	SeekCluster		; Otherwise, jump to the next
+	jr	RmLoop
