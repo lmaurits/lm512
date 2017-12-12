@@ -1,10 +1,10 @@
 .STAT:		equ CFBASE + 0x07	; Status (R)
 
 nullhandler:
+	ei
 	reti
 
 diskhandler:
-	di
 	push	af
 	in		a, (.STAT)		; Read disk status
 	pop	af
@@ -12,7 +12,6 @@ diskhandler:
 	reti
 
 tickhandler:
-	di			; Disable interrupts
 	push	af		; Save AF and HL
 	push	bc
 	push	hl
