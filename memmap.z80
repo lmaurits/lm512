@@ -1,6 +1,5 @@
 ROMBASE:		equ 0x0000
 RAMBASE:		equ 0x2000
-RAMHI:			equ 0x20
 SYSSTACK:		equ 0x7FFF
 
 ; Below we use defs to define variables in RAM, starting at RAMBASE

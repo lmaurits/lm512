@@ -88,7 +88,8 @@ InterruptSetup:
 	ld		bc, 16
 	ldir
 	; Point interrupt vector at interrupt table
-        ld		a, RAMHI
+	ld		de, int_vector
+	ld		a, d
 	ld		i, a
 	; Set interrupt mode 2
 	im 2
