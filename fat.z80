@@ -205,7 +205,8 @@ SeekCluster:
 	ld	(fat_cluster), hl	; Keep target cluster
 	ex	de,hl			; Now cluster is in DE
 	ld	hl, (start_of_fat)
-	ld	d, 0			; Set DE to 0D
+	ld	e, d			; Set DE to 0D
+	ld	d, 0
 	add	hl, de			; HL is now desired FAT sector
 	ld	(fat_sector), hl
 
