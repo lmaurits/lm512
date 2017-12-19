@@ -116,7 +116,7 @@ AdvanceCluster:
 	;; Increment index and figure out if we need to read new sec
 	ld	a, (fat_index)
 	inc	a
-	cp	32	; 32 clusters / sector
+	cp	0	; If index has wrapped, we need to read a new sector
 	jr	z, AdvanceCluster_ReadNewSector
 	ld	(fat_index), a
 
