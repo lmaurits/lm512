@@ -3,9 +3,10 @@ include 'memmap.z80'
 include 'iomap.z80'
 
 org		ROMBASE
+di
 jp		Main
 
-defs 5, 0x00	; Align BIOS table 4 bytes into ROMBASE
+defs 4, 0x00	; Align BIOS table 4 bytes into ROMBASE
 
 ; BIOS call table
 
