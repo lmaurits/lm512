@@ -623,6 +623,9 @@ transfer_outer_loop:
 	ld		a, proto_bytes
 	call		SERIAL_WRITE_B
 	call		SERIAL_READ_B
+	; Make sure we wren't just told there are no more bytes
+	cp		0
+	jr		z, SerialLoadEnd
 	; A now contains byte count.  Turn to 16 bit in BC
 	ld		b, 0
 	ld		c, a
@@ -630,9 +633,6 @@ transfer_outer_loop:
 	ex		de, hl
 	add		hl, bc
 	ex		de, hl
-	; Make sure we wren't just told there are no more bytes
-	cp		0
-	jr		z, SerialLoadEnd
 	ld		a, proto_send
 	call		SERIAL_WRITE_B
 transfer_inner_loop:

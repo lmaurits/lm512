@@ -199,9 +199,9 @@ ValidateFilenameAllGood:
 	cp		a	; Set zero flag
 	ret
 ValidateFilenameBad:
-	pop		hl	; Get rid of filename pointer
 	ld		hl, BadFilenameStr
 	call		PrintStringA
+	pop		hl	; Get rid of filename pointer
 	or		1	; Reset zero flag
 	ret
 BadFilenameStr:
