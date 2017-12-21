@@ -45,8 +45,9 @@ include 'rtc.z80'
 ; Main BIOS entry point
 Main:
 	ld		sp, SYSSTACK
-	ld		a, 0
+	ld		a, 1
 	call		SetMemBank
+	ld		a, 0
 	ld		(ticks), a
 	ld		(alarm_flag), a
 	ld		(uptime_secs), a
