@@ -148,15 +148,16 @@ AdvanceCluster_ReadNewSector:
 
 FindFirstAvailCluster:
 	call	ResetFat
+	; Check if the first non-reserved cluster is available...
 	ld	hl, (fat_mem_index)
 	ld	a, (hl)
 	inc	hl
 	ld	b, (hl)
 	or	b
 	cp	0
+	; ...if it is, return here
 	ret	z
-	call	FindNextAvailCluster
-
+	; ...but if not, fall through into FindNextAvailCluster
 ;;;;;;;;;;;;
 
 FindNextAvailCluster:
