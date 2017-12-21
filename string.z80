@@ -36,18 +36,27 @@ ReadLineA00:
 	; Check for backspace
 	cp		0x7F ; Backspace
 	jr		z, ReadLineABackspace
-	; If not backspace, echo and store
-	call		SERIAL_WRITE_A
-	ld		(hl), a
-	inc		hl
-	inc		b
 	; Check for end of line
 	cp		"\r"
 	jr		z, ReadLineA01
 	; Check for abort with ctrl-c
 	cp		0x03 ; Ctrl-C
 	jr		z, ReadLineA02
-	; Read next char
+	; If not any of the above cases, we're
+	; dealing with a "real char".
+	; Do we have buffer space to handle it?
+	ld		c, a	; Backup char
+	ld		a, b
+	cp		80
+	jr		z, ReadLineABackspaceEnd
+	ld		a, c	; Restore char
+	; We have buffer space, so echo the char,
+	; store it in mem and increment the buffer
+	; pointer and char count
+	call		SERIAL_WRITE_A
+	ld		(hl), a
+	inc		hl
+	inc		b
 	jr		ReadLineA00
 ReadLineABackspace:
 	; Handle Backspace
@@ -73,9 +82,10 @@ BackSpaceControlSeq:
 	defm		0x1B, 0x5B, "D", 0x1B, 0x5B, "P", 0x00
 ReadLineA01:
 	; Handle Enter
+	call		SERIAL_WRITE_A	; Echo the \r
 	ld		a, "\n"
 	call		SERIAL_WRITE_A
-	dec		hl
+	; Terminate string
 	ld		(hl), "\0"
 	pop		hl
 	cp		a	; Set zero flag
