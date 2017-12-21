@@ -357,6 +357,17 @@ FlashValidate:
 	ld		(target_filename_ptr), hl
 	call		FindFile
 	jp		nz, BadFileCallback
+	;; Check file is not too large
+	ld		hl, (size_in_bytes+2)	; upper 16 bit
+	ld		a, h
+	or		l
+	cp		0
+	jr		nz, FlashTooLarge
+	ld		bc, (size_in_bytes)	; lower 16 bit
+	ld		hl, 0x2000
+	or	a			; Clear carry flag
+	sbc		hl, bc
+	jr		c, FlashTooLarge
 	;; First, warn the user
 	ld		hl, FlashNotice
 	call		PrintStringA
@@ -368,7 +379,13 @@ FlashValidate:
 	ldir			; Relocate
 	jp		0x8000		; Do it!
 FlashNotice:
-defm	"Rewriting firmware.  Good luck!\r\n\0"
+	defm	"Rewriting firmware.  Good luck!\r\n\0"
+FlashTooLarge:
+	ld		hl, FlashTooLargeStr
+	call		PrintStringA
+	ret
+FlashTooLargeStr:
+	defm	"ROM image too large!\r\n\0"
 
 FlashRelocatablePayload:
 	; NB: This is loaded into RAM at address 0x9000
