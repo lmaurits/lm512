@@ -1050,6 +1050,13 @@ ExecFile:
 	call		FindFile
 	jp		nz, BadFileCallback
 	; At this point, we've matched
+	; Is this a batch file?
+	ld		hl, extension
+	ld		de, BatchExtensionStr
+	call		StrCmp
+	; If so, treat it as such
+	jp		z, BatchCallback
+	; If not, execute it as Z80 machine code
 	; Read the file into memory
 	ld	hl, (execaddr)
 	call	ReadFile
@@ -1067,6 +1074,8 @@ ExecReturnAddress:
 	; Restore stack
 	ld		sp, (dos_stack_backup)
 	ret
+BatchExtensionStr:
+	defm		"BAT\0"
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
