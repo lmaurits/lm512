@@ -946,14 +946,11 @@ RmValidate:
 	ld		(target_filename_ptr), hl
 	call		ValidateFilename
 	ret		nz
-
-	; HL points to a filename we want to remove
-	ld	hl, (dos_argv)
-	ld		(target_filename_ptr), hl
-	call	FindFile
-	jp	nz, BadFileCallback
+	; Search for this file
+	call		FindFile
+	jp		nz, BadFileCallback
 	; Dent *should* now be pointed at our target
-	call	DeleteFile
+	call		DeleteFile
 	ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1086,14 +1083,11 @@ Type:
 	ld		de, typestr
 	jp		OneFilenameArgcError
 TypeValidate:
-	ld	hl, (dos_argv)
-	ld	(target_filename_ptr), hl
-	call		ValidateFilename
-	ret		nz
-	; HL points to a filename we want to load
-	; Save it for later
 	ld		hl, (dos_argv)
 	ld		(target_filename_ptr), hl
+	call		ValidateFilename
+	ret		nz
+	; Find file
 	call		FindFile
 	jp		nz, BadFileCallback
 	; Dent *should* now be pointed at our target
