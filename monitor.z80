@@ -112,6 +112,7 @@ mon_dispatch_table:
 	defw memedstr, Memed
 	defw outstr, Out
 	defw regstr, Registers
+	defw resetstr, Reset
 	defw stackstr, Stack
 	defw nullstr, What
 
