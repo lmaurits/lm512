@@ -24,6 +24,8 @@ DosInit:
 	ld		(execaddr), hl
 	ld		hl, 0x8000
 	ld		(fileaddr), hl
+	ld		hl, 0xFFFF
+	ld		(prgstack), hl
 	; Initialise filesystem
 	call		InitFAT
 	; Check for AUTOEXEC.BAT
@@ -721,6 +723,8 @@ execaddrstr:
 	defm		"EXECADDR\0"
 fileaddrstr:
 	defm		"FILEADDR\0"
+prgstackstr:
+	defm		"PRGSTACK\0"
 int1str:defm		"INT1\0"
 int2str:defm		"INT2\0"
 int3str:defm		"INT3\0"
@@ -733,6 +737,7 @@ int8str:defm		"INT8\0"
 SetTable:
 	defw execaddrstr, execaddr
 	defw fileaddrstr, fileaddr
+	defw prgstackstr, prgstack
 	defw int1str, int_vector
 	defw int2str, int_vector+2
 	defw int3str, int_vector+4
@@ -1048,6 +1053,10 @@ ExecFile:
 	; Read the file into memory
 	ld	hl, (execaddr)
 	call	ReadFile
+	; Setup stack
+	ld		(dos_stack_backup), sp
+	ld		hl, (prgstack)
+	ld		sp, hl
 	; Can't actually call hl or (hl), so do this manually
 	; with a push and jump
 	ld	hl, ExecReturnAddress
@@ -1055,6 +1064,8 @@ ExecFile:
 	ld	hl, (execaddr)
 	jp	(hl)
 ExecReturnAddress:
+	; Restore stack
+	ld		sp, (dos_stack_backup)
 	ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
