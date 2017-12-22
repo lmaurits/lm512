@@ -649,13 +649,8 @@ transfer_inner_loop:
 	call		SERIAL_WRITE_A
 	jr		transfer_outer_loop
 SerialLoadEnd:
-	ld		hl, message_buffer
-	ld		a, d
-	call		StrfHex
-	ld		a, e
-	call		StrfHex
-	ld		(hl), "\0"
-	ld		hl, message_buffer
+	ex		de,hl		; Byte count in hl
+	call		B2D16		; Decimalise
 	call		PrintStringA
 	ld		hl, SerialLoadStr
 	call		PrintStringA
