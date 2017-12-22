@@ -1011,23 +1011,52 @@ DosLoadFile:
 	ld		a, (dos_argc)
 	cp		1
 	jr		z, LoadValidate
+	cp		2
+	jr		z, LoadValidate
 	;; Argc error
-	ld		de, loadstr
-	jp		OneFilenameArgcError
+	ld		hl, loadstr
+	call		PrintStringA
+	ld		hl, ExpectsOneOrTwoArgStr
+	call		PrintStringA
+	ld		hl, FilenameAddrStr
+	call		PrintStringA
+	ret
+ExpectsOneOrTwoArgStr:
+	defm		" expects one or two args \0"
+FilenameAddrStr:
+	defm		"(8.3 filename and optional memory address)\r\n\0"
 LoadValidate:
 	ld		hl, (dos_argv)
 	call		ValidateFilename
 	ret		nz
-LoadFile:
-	; HL points to a filename we want to remove
-	ld		hl, (dos_argv)
+	; HL points to a filename we want to load
 	ld		(target_filename_ptr), hl
 	call		FindFile
 	jp		nz, BadFileCallback
+	; At this point, we know the file exists
+	; and the current dent is pointing at it
+	; If we only got the one argument,
+	; load file to location specified by
+	; FILEADDR sys var
+	ld		a, (dos_argc)
+	cp		1
+	jr		z, LoadFileToFileAddr
+	; If we got a second arg, treat it as the
+	; loading address
+	ld		hl, (dos_argv+2)
+	call		ValidateAddress
+	ret		nz
+	; Parse address and store on stack
+	call		Read16bit
+	ld		h, b
+	ld		l, c
+	jr		LoadFile
+LoadFileToFileAddr:
+	ld		hl, (fileaddr)
 	; Dent *should* now be pointed at our target
 	; Read the file into memory
-	ld	hl, (fileaddr)
-	call	ReadFile
+LoadFile:
+	call		ReadFile
 	ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
