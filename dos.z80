@@ -85,6 +85,7 @@ batchstr:	defm "BATCH\0"
 clsstr:		defm "CLS\0"
 cpstr:		defm "CP\0"
 datestr:	defm "DATE\0"
+execstr:	defm "EXEC\0"
 flashstr:	defm "FLASH\0"
 lsstr:		defm "LS\0"
 monstr:		defm "MONITOR\0"
@@ -106,22 +107,23 @@ dos_dispatch_table:
 	defw clsstr, Cls
 	defw cpstr, Cp
 	defw datestr, Date
+	defw execstr, Exec
 	defw flashstr, Flash
 	defw lsstr, Ls
 	defw helpstr, DosHelp
+	defw loadstr, DosLoadFile
 	defw monstr, EnterMonitor
 	defw mvstr, Mv
-	defw serloadstr, SerialLoad
-	defw showstr, Show
-	defw sleepstr, SleepDos
-	defw setstr, Set
-	defw typestr, Type
-	defw uptimestr, Uptime
 	defw receivestr, Receive
 	defw resetstr, Reset
 	defw rmstr, Rm
-	defw loadstr, DosLoadFile
-	defw nullstr, ExecFile
+	defw serloadstr, SerialLoad
+	defw setstr, Set
+	defw showstr, Show
+	defw sleepstr, SleepDos
+	defw typestr, Type
+	defw uptimestr, Uptime
+	defw nullstr, Default
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
@@ -554,7 +556,9 @@ DosHelp:
 	defm "CLS\t\tClear screen\n\r"
 	defm "CP\t\tCopy file\n\r"
 	defm "DATE\t\tPrint/set date and time\n\r"
+	defm "EXEC\t\tLoad and execute machine code from file\n\r"
 	defm "FLASH\t\tFlash ROM from file\n\r"
+	defm "LOAD\t\tLoad file onto memory\n\r"
 	defm "LS\t\tList directory contents\n\r"
 	defm "MONITOR\t\tEnter resident monitore\n\r"
 	defm "MV\t\tMove (rename) file\n\r"
@@ -1015,6 +1019,7 @@ DosLoadFile:
 	jr		z, LoadValidate
 	;; Argc error
 	ld		hl, loadstr
+OneFilenameOptionalAddressArgcError:
 	call		PrintStringA
 	ld		hl, ExpectsOneOrTwoArgStr
 	call		PrintStringA
@@ -1061,26 +1066,73 @@ LoadFile:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
-; EXEC FILE
+; Default Handler
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-ExecFile:
+Default:
 	ld		hl, dos_linebuf
 	ld		(target_filename_ptr), hl
 	call		FindFile
 	jp		nz, BadFileCallback
-	; At this point, we've matched
+	; At this point, we know the file exists
 	; Is this a batch file?
 	ld		hl, extension
 	ld		de, BatchExtensionStr
 	call		StrCmp
 	; If so, treat it as such
 	jp		z, BatchCallback
-	; If not, execute it as Z80 machine code
+	; If not, treat it as Z80 machine code
+	jr		ExecFileAtExecAddr
+BatchExtensionStr:
+	defm		"BAT\0"
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; EXEC FILE
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+Exec:
+	; Check dos_argc
+	ld		a, (dos_argc)
+	cp		1
+	jr		z, ExecValidate
+	cp		2
+	jr		z, ExecValidate
+	;; Argc error
+	ld		hl, execstr
+	jp		OneFilenameOptionalAddressArgcError
+ExecValidate:
+	ld		hl, (dos_argv)
+	call		ValidateFilename
+	ret		nz
+	; HL points to a filename we want to load
+	ld		(target_filename_ptr), hl
+	call		FindFile
+	jp		nz, BadFileCallback
+	; If we only got the one argument,
+	; load file to location specified by
+	; FILEADDR sys var
+	ld		a, (dos_argc)
+	cp		1
+	jr		z, ExecFileAtExecAddr
+	; If we got a second arg, treat it as the
+	; loading address
+	ld		hl, (dos_argv+2)
+	call		ValidateAddress
+	ret		nz
+	; Parse address and store on stack
+	call		Read16bit
+	ld		h, b
+	ld		l, c
+	jr		ExecCore
+ExecFileAtExecAddr:
+	ld		hl, (execaddr)
+	; Dent *should* now be pointed at our target
 	; Read the file into memory
-	ld	hl, (execaddr)
-	call	ReadFile
+ExecCore:
+	call		ReadFile
 	; Setup stack
 	ld		(dos_stack_backup), sp
 	ld		hl, (prgstack)
@@ -1095,8 +1147,6 @@ ExecReturnAddress:
 	; Restore stack
 	ld		sp, (dos_stack_backup)
 	ret
-BatchExtensionStr:
-	defm		"BAT\0"
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
