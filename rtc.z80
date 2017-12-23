@@ -27,6 +27,21 @@ UnsetUpdateInhibit:
 	out (.CTRL), a
 	ret
 
+SetPeriodicInterruptRate:
+	and 00001111b		; Mask off non-rate bits
+	out (.RATES), a
+	ret
+
+EnablePeriodicInterrupt:
+	ld a, 00000100b
+	out (.IE), a
+	ret
+
+DisblePeriodicInterrupt:
+	ld a, 00000000b
+	out (.IE), a
+	ret
+
 SetRTC:
 	call		SetUpdateInhibit
 	ld		a, b

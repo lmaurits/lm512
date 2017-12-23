@@ -77,10 +77,9 @@ UartInit:
 RTCSetup:
 	; Set periodic rate to 500ms
         ld a, 00001010b
-	out (RTCBASE + 0xB), a
+	call		SetPeriodicInterruptRate
 	; Turn on periodic interrupt
-	ld a, 00000100b
-	out (RTCBASE + 0xC), a
+	call		EnablePeriodicInterrupt
 	ret
 
 InterruptSetup:
