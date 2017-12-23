@@ -40,6 +40,7 @@ mon_reg_stack:		defs 2
 ; Sys variables
 execaddr:		defs 2
 fileaddr:		defs 2
+prgstack:		defs 2
 
 ; Bin2Dec
 B2DINV:  DS 8            ; space for 64-bit input value (LSB first)
