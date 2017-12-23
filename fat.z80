@@ -501,24 +501,42 @@ SaveRootDir:
 ReadFile:
 	; Load the contents of the file corresponding to the current directory entry
 	; into memory at the location pointed to by HL
-	ld	(memory_pointer), hl
+	push	hl
+	call	OpenFile
+	pop	hl
+ReadFileLoop:
+	call	ReadSector
+	ret	z
+	jr	ReadFileLoop
+
+OpenFile:
 	ld	hl, (starting_cluster)
 	call	SeekCluster
-ReadFileLoop:
+	ret
+
+ReadSector:
+	; READ ONE SECTOR OF CURRENT FILE TO HL
+	; If this is the last sector of the file, return with Z flag
+	; Otherwise, advance sector pointer and return without Z
+	; At exit, HL points to END of copied memory
+	push	hl
 	; Convert current_cluster to sector in b,c,d,e
 	ld	hl, (fat_cluster)
 	call	ClusterToSector
 	; Read one sector
-	ld	hl, (memory_pointer)
+	pop	hl
 	ld	a, 0x01
 	rst	0x20	; call CF_READ
-	ld	(memory_pointer), hl
+	push	hl
 	; Is there another cluster?
 	call	TestEOF
+	pop	hl
 	ret	z
-	; Move to next cluster and loop
+	push	hl
 	call	FollowClusterChain
-	jr	ReadFileLoop
+	pop	hl
+	or	1	; Reset zero flag
+	ret
 
 ;;;;;;;;;;;;
 
