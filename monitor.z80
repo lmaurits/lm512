@@ -129,14 +129,11 @@ Bank:
 	cp		1
 	jr		z, BankSet
 	;; Argc error
-	ld		hl, message_buffer
-	ld		de, bankstr
-	call		StrCpy
-	ld		de, ExpectsExactlyOneArgStr
-	call		StrCpy
-	ld		de, BankArgsStr
-	call		StrCpy
-	ld		hl, message_buffer
+	ld		hl, bankstr
+	call		PrintStringA
+	ld		hl, ExpectsExactlyOneArgStr
+	call		PrintStringA
+	ld		hl, BankArgsStr
 	call		PrintStringA
 	ret
 BankArgsStr:
@@ -165,14 +162,11 @@ CfLoad:
 	cp		3
 	jr		z, CfLoad00
 	;; Argc error
-	ld		hl, message_buffer
-	ld		de, cfloadstr
-	call		StrCpy
-	ld		de, ExpectsExactlyThreeArgsStr
-	call		StrCpy
-	ld		de, CfLoadArgStr
-	call		StrCpy
-	ld		hl, message_buffer
+	ld		hl, cfloadstr
+	call		PrintStringA
+	ld		hl, ExpectsExactlyThreeArgsStr
+	call		PrintStringA
+	ld		hl, CfLoadArgStr
 	call		PrintStringA
 	ret
 CfLoad00:
@@ -221,14 +215,11 @@ CfSave:
 	cp		3
 	jr		z, CfSave00
 	;; Argc error
-	ld		hl, message_buffer
-	ld		de, cfsavestr
-	call		StrCpy
-	ld		de, ExpectsExactlyThreeArgsStr
-	call		StrCpy
-	ld		de, CfSaveArgStr
-	call		StrCpy
-	ld		hl, message_buffer
+	ld		hl, cfsavestr
+	call		PrintStringA
+	ld		hl, ExpectsExactlyThreeArgsStr
+	call		PrintStringA
+	ld		hl, CfSaveArgStr
 	call		PrintStringA
 	ret
 CfSave00:
@@ -285,15 +276,12 @@ Dump:
 	cp		1
 	jr		z, Dump00
 	;; Argc error
-	ld		de, dumpstr
+	ld		hl, dumpstr
 OneMemAddressArgcError:
-	ld		hl, message_buffer
-	call		StrCpy
-	ld		de, ExpectsExactlyOneArgStr
-	call		StrCpy
-	ld		de, AddressStr
-	call		StrCpy
-	ld		hl, message_buffer
+	call		PrintStringA
+	ld		hl, ExpectsExactlyOneArgStr
+	call		PrintStringA
+	ld		hl, AddressStr
 	call		PrintStringA
 	ret
 Dump00:
@@ -388,14 +376,11 @@ In:
 	cp		1
 	jr		z, In00
 	;; Argc error
-	ld		hl, message_buffer
-	ld		de, instr
-	call		StrCpy
-	ld		de, ExpectsExactlyOneArgStr
-	call		StrCpy
-	ld		de, InArgsStr
-	call		StrCpy
-	ld		hl, message_buffer
+	ld		hl, instr
+	call		PrintStringA
+	ld		hl, ExpectsExactlyOneArgStr
+	call		PrintStringA
+	ld		hl, InArgsStr
 	call		PrintStringA
 	ret
 InArgsStr:
@@ -440,7 +425,7 @@ Jump:
 	cp		1
 	jr		z, Jump00
 	;; Argc error
-	ld		de, jumpstr
+	ld		hl, jumpstr
 	jp		OneMemAddressArgcError
 Jump00:
 	ld		hl, (mon_argv)
@@ -460,14 +445,11 @@ Memcpy:
 	cp		3
 	jr		z, Memcpy00
 	;; Argc error
-	ld		hl, message_buffer
-	ld		de, memcpystr
-	call		StrCpy
-	ld		de, ExpectsExactlyThreeArgsStr
-	call		StrCpy
-	ld		de, MemcpyArgStr
-	call		StrCpy
-	ld		hl, message_buffer
+	ld		hl, memcpystr
+	call		PrintStringA
+	ld		hl, ExpectsExactlyThreeArgsStr
+	call		PrintStringA
+	ld		hl, MemcpyArgStr
 	call		PrintStringA
 	ret
 MemcpyArgStr:
@@ -509,7 +491,7 @@ Memed:
 	cp		1
 	jr		z, Memed00
 	;; Argc error
-	ld		de, memedstr
+	ld		hl, memedstr
 	jp		OneMemAddressArgcError
 	ret
 Memed00:
@@ -599,14 +581,11 @@ Out:
 	cp		2
 	jr		z, Out00
 	;; Argc error
-	ld		hl, message_buffer
-	ld		de, outstr
-	call		StrCpy
-	ld		de, ExpectsExactlyTwoArgsStr
-	call		StrCpy
-	ld		de, OutArgsStr
-	call		StrCpy
-	ld		hl, message_buffer
+	ld		hl, outstr
+	call		PrintStringA
+	ld		hl, ExpectsExactlyTwoArgsStr
+	call		PrintStringA
+	ld		hl, OutArgsStr
 	call		PrintStringA
 	ret
 OutArgsStr:

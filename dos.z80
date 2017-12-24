@@ -141,15 +141,12 @@ Batch:
 	cp		1
 	jr		z, BatchValidate
 	;; Argc error
-	ld		de, batchstr
+	ld		hl, batchstr
 OneFilenameArgcError:
-	ld		hl, message_buffer
-	call		StrCpy
-	ld		de, ExpectsExactlyOneArgStr
-	call		StrCpy
-	ld		de, FilenameStr
-	call		StrCpy
-	ld		hl, message_buffer
+	call		PrintStringA
+	ld		hl, ExpectsExactlyOneArgStr
+	call		PrintStringA
+	ld		hl, FilenameStr
 	call		PrintStringA
 	ret
 BatchValidate:
@@ -349,7 +346,7 @@ Flash:
 	cp		1
 	jr		z, FlashValidate
 	;; Argc error
-	ld		de, flashstr
+	ld		hl, flashstr
 	call		OneFilenameArgcError
 	ret
 FlashValidate:
@@ -592,14 +589,11 @@ SerialLoad:
 	cp		1
 	jr		z, SerialLoad00
 	;; Prepare and pring arg error
-	ld		hl, message_buffer
-	ld		de, serloadstr
-	call		StrCpy
-	ld		de, ExpectsExactlyOneArgStr
-	call		StrCpy
-	ld		de, AddressStr
-	call		StrCpy
-	ld		hl, message_buffer
+	ld		hl, serloadstr
+	call		PrintStringA
+	ld		hl, ExpectsExactlyOneArgStr
+	call		PrintStringA
+	ld		hl, AddressStr
 	call		PrintStringA
 	ret
 ExpectsExactlyOneArgStr:
@@ -674,14 +668,11 @@ Set:
 	cp		2
 	jr		z, SetValidate
 	;; Argc error
-	ld		hl, message_buffer
-	ld		de, setstr
-	call		StrCpy
-	ld		de, ExpectsExactlyTwoArgsStr
-	call		StrCpy
-	ld		de, SetArgsStr
-	call		StrCpy
-	ld		hl, message_buffer
+	ld		hl, setstr
+	call		PrintStringA
+	ld		hl, ExpectsExactlyTwoArgsStr
+	call		PrintStringA
+	ld		hl, SetArgsStr
 	call		PrintStringA
 	ret
 SetValidate:
@@ -802,7 +793,7 @@ Receive:
 	cp		1
 	jr		z, ReceiveValidate
 	;; Argc error
-	ld		de, receivestr
+	ld		hl, receivestr
 	jp		OneFilenameArgcError
 FilenameStr:
 	defm		"(8.3 filename(s))\r\n\0"
@@ -885,15 +876,12 @@ Mv:
 	cp		2
 	jr		z, Mv00
 	;; Argc error
-	ld		de, mvstr
+	ld		hl, mvstr
 TwoFilenamesArgcError:
-	ld		hl, message_buffer
-	call		StrCpy
-	ld		de, ExpectsExactlyTwoArgsStr
-	call		StrCpy
-	ld		de, FilenameStr
-	call		StrCpy
-	ld		hl, message_buffer
+	call		PrintStringA
+	ld		hl, ExpectsExactlyTwoArgsStr
+	call		PrintStringA
+	ld		hl, FilenameStr
 	call		PrintStringA
 	ret
 Mv00:
@@ -943,7 +931,7 @@ Rm:
 	cp		1
 	jr		z, RmValidate
 	;; Argc error
-	ld		de, rmstr
+	ld		hl, rmstr
 	jp		OneFilenameArgcError
 RmValidate:
 	ld		hl, (dos_argv)
@@ -985,7 +973,7 @@ Cp:
 	cp		2
 	jr		z, Cp00
 	;; Argc error
-	ld		de, cpstr
+	ld		hl, cpstr
 	jp		TwoFilenamesArgcError
 Cp00:
 	ld		hl, (dos_argv)
@@ -1159,7 +1147,7 @@ Type:
 	cp		1
 	jr		z, TypeValidate
 	;; Argc error
-	ld		de, typestr
+	ld		hl, typestr
 	jp		OneFilenameArgcError
 TypeValidate:
 	ld		hl, (dos_argv)
@@ -1204,14 +1192,11 @@ SleepDos:
 	cp		1
 	jr		z, SleepDos00
 	;; Argc error
-	ld		hl, message_buffer
-	ld		de, sleepstr
-	call		StrCpy
-	ld		de, ExpectsExactlyOneArgStr
-	call		StrCpy
-	ld		de, SleepArgsStr
-	call		StrCpy
-	ld		hl, message_buffer
+	ld		hl, sleepstr
+	call		PrintStringA
+	ld		hl, ExpectsExactlyOneArgStr
+	call		PrintStringA
+	ld		hl, SleepArgsStr
 	call		PrintStringA
 	ret
 SleepArgsStr:
