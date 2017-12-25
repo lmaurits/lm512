@@ -1,4 +1,6 @@
 .STAT:		equ CFBASE + 0x07	; Status (R)
+.SRA:		equ DUARTBASE + 0x01	; Status Register A (R)
+.RHRA:		equ DUARTBASE + 0x03	; Rx Holding Register A (R)
 
 nullhandler:
 	ei
@@ -15,6 +17,48 @@ tickhandler:
 	push	af		; Save AF and HL
 	push	bc
 	push	hl
+
+	; Buffered UART stuff
+	ld	a, (uart_buffering)
+	cp	0xFF
+	jr	nz, tickhandler_uptime
+BufferConsumeLoop:
+	; Anything to read?
+	in a, (.SRA)		; Read status reg
+	and 00000001b		; Mask off receive ready
+	xor 00000001b		; Compare receive ready to 1
+	jr	nz, tickhandler_uptime
+	; Got room?
+	ld	a, (uart_buffer_size)
+	cp	16
+	jr	z, tickhandler_uptime
+	; Add to buffer
+	in	a, (.RHRA)
+	cp	0x03		; Ctrl C
+	jr	nz, BufferConsumeStore
+	; This is a Ctrl-C, kill current process!
+	; Hack the return address
+	ld	b, 6
+StackHackLoop:
+	inc	sp
+	djnz	StackHackLoop
+	pop	hl		; Old return address
+	ld	hl, ExecReturnAddress	; New return
+	push	hl
+	ld	b, 6
+StackHackLoop2:
+	dec	sp
+	djnz	StackHackLoop2
+	; Break out of buffer looop
+	jr	tickhandler_uptime
+BufferConsumeStore:
+	ld	hl, (uart_buffer_pointer)
+	ld	(hl), a
+	inc	hl
+	ld	(uart_buffer_pointer), hl
+	ld	hl, uart_buffer_size
+	inc	(hl)
+	jr	BufferConsumeLoop
 
 tickhandler_uptime:
 	;;;; Handle tick counter

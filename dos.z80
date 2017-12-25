@@ -26,6 +26,12 @@ DosInit:
 	ld		(fileaddr), hl
 	ld		hl, 0xFFFF
 	ld		(prgstack), hl
+	; Setup UART buffering
+	ld		a, 0x00
+	ld		(uart_buffering), a
+	ld		(uart_buffer_size), a
+	ld		hl, uart_buffer
+	ld		(uart_buffer_pointer), hl
 	; Initialise filesystem
 	call		InitFAT
 	; Check for AUTOEXEC.BAT
@@ -124,6 +130,30 @@ dos_dispatch_table:
 	defw typestr, Type
 	defw uptimestr, Uptime
 	defw nullstr, Default
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; Buffered UART
+ReadChar:
+	push		hl
+ReadCharReenter:
+	di
+	ld		a, (uart_buffer_size)
+	cp		0
+	jr		z, ReadCharWait
+	ld		hl, (uart_buffer_pointer)
+	dec		hl
+	ld		a, (hl)
+	ld		(uart_buffer_pointer), hl
+	ld		hl, uart_buffer_size
+	dec		(hl)
+	ei
+	pop		hl
+	ret
+ReadCharWait:
+	ei
+	halt
+	jr		ReadCharReenter
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
@@ -1115,6 +1145,9 @@ ExecCore:
 	ld		(dos_stack_backup), sp
 	ld		hl, (prgstack)
 	ld		sp, hl
+	; Turn on UART buffering
+	ld		a, 0xFF
+	ld		(uart_buffering), a
 	; Can't actually call hl or (hl), so do this manually
 	; with a push and jump
 	ld	hl, ExecReturnAddress
@@ -1122,6 +1155,9 @@ ExecCore:
 	ld	hl, (execaddr)
 	jp	(hl)
 ExecReturnAddress:
+	; Turn off UART buffering
+	ld		a, 0x00
+	ld		(uart_buffering), a
 	; Restore stack
 	ld		sp, (dos_stack_backup)
 	ret

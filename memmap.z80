@@ -22,6 +22,10 @@ uptime_mins:		defs 1
 uptime_hours:		defs 1
 uptime_days:		defs 2
 message_buffer:		defs 80
+uart_buffering:		defs 1
+uart_buffer:		defs 16
+uart_buffer_pointer:	defs 2
+uart_buffer_size:	defs 1
 
 
 ; Stuff for the inbuilt DOS
