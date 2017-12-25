@@ -92,11 +92,7 @@ ResetFatAdvanceSectorEntryPoint:
 	ld	a, 0x01
 	rst	0x20	; call CF_READ
 	; Skip over reserved clusters
-	ld	hl, fat_buffer
-	inc	hl
-	inc	hl
-	inc	hl
-	inc	hl
+	ld	hl, fat_buffer+4
 	; Update indexes
 	ld	(fat_mem_index), hl
 	ld	hl, 0x0002
@@ -114,11 +110,11 @@ AdvanceCluster:
 	ld	(fat_cluster), hl
 
 	;; Increment index and figure out if we need to read new sec
-	ld	a, (fat_index)
-	inc	a
+	ld	hl, fat_index
+	inc	(hl)
+	ld	a, (hl)
 	cp	0	; If index has wrapped, we need to read a new sector
 	jr	z, AdvanceCluster_ReadNewSector
-	ld	(fat_index), a
 
 	;; Increment FAT memory index
 	ld	hl, (fat_mem_index)
@@ -138,8 +134,6 @@ AdvanceCluster_ReadNewSector:
 	rst	0x20	; call CF_READ
 
 	;; Reset index and mem_index
-	ld	a, 0
-	ld	(fat_index), a
 	ld	hl, fat_buffer
 	ld	(fat_mem_index), hl
 	ret
@@ -152,8 +146,7 @@ FindFirstAvailCluster:
 	ld	hl, (fat_mem_index)
 	ld	a, (hl)
 	inc	hl
-	ld	b, (hl)
-	or	b
+	or	(hl)
 	cp	0
 	; ...if it is, return here
 	ret	z
@@ -165,8 +158,7 @@ FindNextAvailCluster:
 	ld	hl, (fat_mem_index)
 	ld	a, (hl)
 	inc	hl
-	ld	b, (hl)
-	or	b
+	or	(hl)
 	cp	0
 	ret	z
 	jr	FindNextAvailCluster
