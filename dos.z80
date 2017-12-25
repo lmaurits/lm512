@@ -894,24 +894,11 @@ ValidateTwoFilenames:
 	ret		nz
 	call		HandleOverwrite
 	ret		nz
-	; HL points to a filename we want to rename
+MvCore:
 	ld		hl, (dos_argv)
-	ld		(target_filename_ptr), hl
-	call		FindFile
-	jp		nz, BadFileCallback
-	; Dent *should* now be pointed at our target
-	; Copy the new name into the filename buffer
-	ld	hl, (dos_argv+2)
-	ld	de, filename_buffer
-	ld	bc, 12
-	ldir
-	; Overwrite the filename in the dent buffer
-	call	ReverseBuildFilenameString
-	; Save new dent to disk
-	call	UpdateRootDir
-	call	SaveRootDir
+	ld		de, (dos_argv+2)
+	call		RenameFile
 	ret
-
 BadFileCallback:
 	ld	hl, BadFileMsg
 	call	PrintStringA

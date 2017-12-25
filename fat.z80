@@ -709,3 +709,29 @@ RmLoop:
 	ret	z			; If this was the last cluster, return
 	call	SeekCluster		; Otherwise, jump to the next
 	jr	RmLoop
+
+;;;;;;;;;;
+
+RenameFile:
+	; HL points to old name
+	; DE points to new name
+	push		de		; Backup new name pointer
+	ld		(target_filename_ptr), hl
+	call		FindFile
+	jr		nz, RenameAbort
+	; Dent *should* now be pointed at our target
+	; Copy the new name into the filename buffer
+	pop		hl		; New name pointer in HL
+	ld		de, filename_buffer
+	ld		bc, 12
+	ldir
+	; Overwrite the filename in the dent buffer
+	call		ReverseBuildFilenameString
+	; Save new dent to disk
+	call		UpdateRootDir
+	call		SaveRootDir
+	ret
+RenameAbort:
+	pop		de
+	ld		a, 0xff
+	ret
