@@ -979,17 +979,20 @@ Cp00:
 	ld		hl, (dos_argv)
 	call		ValidateFilename
 	ret		nz
+	call		FindFile
+	jp		nz, BadFileCallback
 	ld		hl, (dos_argv+2)
 	call		ValidateFilename
 	ret		nz
 	call		HandleOverwrite
 	ret		nz
-	ld	hl, (dos_argv)
-	call	LoadFile
-	ld	hl, (fileaddr)
-	ld	de, (dos_argv+2)
-	ld	bc, (size_in_bytes)
-	call	WriteFile
+	ld		hl, (dos_argv)
+	call		FindFile
+	call		LoadFileToFileAddr
+	ld		hl, (fileaddr)
+	ld		de, (dos_argv+2)
+	ld		bc, (size_in_bytes)
+	call		WriteFile
 	ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
