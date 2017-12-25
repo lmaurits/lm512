@@ -429,7 +429,7 @@ delay_loop_end:
 	or		c
 	jr		nz, FlashLoop
 	; Reset when done
-	jp 		$0000
+	rst		0x00
 FlashRelocatablePayloadEnd:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -862,7 +862,7 @@ YNPromptStr:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 Reset:
-	jp		0x0000
+	rst		0x00
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
