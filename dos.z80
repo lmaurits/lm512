@@ -203,8 +203,6 @@ BatchLoop:
 	dec		hl
 	ld		(hl), "\0"
 	ld		hl, (line_start)
-	ld		bc, dos_argc
-	ld		de, dos_dispatch_table
 	call		DosHandleLine
 	ld		hl, (line_end)
 	ld		(line_start), hl
