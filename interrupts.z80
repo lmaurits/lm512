@@ -14,10 +14,9 @@ diskhandler:
 	reti
 
 tickhandler:
-	push	af		; Save AF and HL
-	push	bc
 	push	hl
-
+	push	bc
+	push	af		; Save AF and HL
 	; Buffered UART stuff
 	ld	a, (uart_buffering)
 	cp	0xFF
@@ -38,17 +37,19 @@ BufferConsumeLoop:
 	jr	nz, BufferConsumeStore
 	; This is a Ctrl-C, kill current process!
 	; Hack the return address
-	ld	b, 6
-StackHackLoop:
-	inc	sp
-	djnz	StackHackLoop
-	pop	hl		; Old return address
-	ld	hl, ExecReturnAddress	; New return
+	pop	af
+	pop	bc
+	; At this point, the stack is pointing to our pushed
+	; version of HL from when we entered tickhandler.
+	; Below that in the stack is the return address into
+	; the running program (if any).  Let's put the address
+	; of the program suspension handler *above* that address,
+	; then replace all the registers
+	ld	hl, ExecSuspendAddress
+	ex	(sp), hl
 	push	hl
-	ld	b, 6
-StackHackLoop2:
-	dec	sp
-	djnz	StackHackLoop2
+	push	bc
+	push	af
 	; Break out of buffer looop
 	jr	tickhandler_uptime
 BufferConsumeStore:
@@ -106,9 +107,9 @@ tickhandler_alarm:
 
 tickhandler_end:
 	in	a, (109)	; Reset RTC int
-	pop	hl		; Restore AF and HL
-	pop	bc
 	pop	af
+	pop	bc
+	pop	hl		; Restore AF and HL
 	ei			; Enable interrupts
 	reti
 

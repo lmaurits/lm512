@@ -100,6 +100,7 @@ mvstr:		defm "MV\0"
 serloadstr:	defm "SERLOAD\0"
 receivestr:	defm "RECEIVE\0"
 resetstr:	defm "RESET\0"
+resumestr:	defm "RESUME\0"
 rmstr:		defm "RM\0"
 loadstr:	defm "LOAD\0"
 setstr:		defm "SET\0"
@@ -124,6 +125,7 @@ dos_dispatch_table:
 	defw mvstr, Mv
 	defw receivestr, Receive
 	defw resetstr, Reset
+	defw resumestr, Resume
 	defw rmstr, Rm
 	defw serloadstr, SerialLoad
 	defw setstr, Set
@@ -1165,12 +1167,55 @@ ExecCore:
 	push	hl
 	ld	hl, (execaddr)
 	jp	(hl)
+ExecSuspendAddress:
+	push		af
+	push		bc
+	push		de
+	push		hl
+	ex		af, af'
+	exx
+	push		af
+	push		bc
+	push		de
+	push		hl
+	ex		af, af'
+	exx
+	push		ix
+	push		iy
+	ld		(dos_resume_stack_ptr), sp
 ExecReturnAddress:
 	; Turn off UART buffering
 	ld		a, 0x00
 	ld		(uart_buffering), a
 	; Restore stack
 	ld		sp, (dos_stack_backup)
+	ret
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; RESUME
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+Resume:
+	ld		(dos_stack_backup), sp
+	ld		sp, (dos_resume_stack_ptr)
+	ld		a, 0xFF
+	ld		(uart_buffering), a
+	pop		iy
+	pop		ix
+	ex		af, af'
+	exx
+	pop		hl
+	pop		de
+	pop		bc
+	pop		af
+	ex		af, af'
+	exx
+	pop		hl
+	pop		de
+	pop		bc
+	pop		af
 	ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

@@ -33,6 +33,7 @@ dos_linebuf:		defs 80
 dos_argc:		defs 1
 dos_argv:		defs 32
 dos_stack_backup:	defs 2
+dos_resume_stack_ptr:	defs 2
 
 ; Stuff for the monitor
 mon_linebuf:		defs 80
