@@ -180,13 +180,8 @@ OneFilenameArgcError:
 	call		PrintStringA
 	ret
 BatchValidate:
-	ld		hl, (dos_argv)
-	call		ValidateFilename
+	call		ValidateOneExistingFile
 	ret		nz
-
-	ld		(target_filename_ptr), hl
-	call		FindFile
-	jp		nz, BadFileCallback
 BatchCallback:
 	; At this point, we've matched
 	; Read the file into memory
@@ -214,6 +209,17 @@ BatchLoop:
 	or		c
 	ret		z
 	jr		BatchLoop
+
+ValidateOneExistingFile:
+	ld		hl, (dos_argv)
+	call		ValidateFilename
+	ret		nz
+	ld		(target_filename_ptr), hl
+	call		FindFile
+	ret		z
+	call		BadFileCallback
+	or		1
+	ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -380,14 +386,8 @@ Flash:
 	call		OneFilenameArgcError
 	ret
 FlashValidate:
-	ld		hl, (dos_argv)
-	call		ValidateFilename
+	call		ValidateOneExistingFile
 	ret		nz
-	; HL points to a filename we want to load
-	; Save it for later
-	ld		(target_filename_ptr), hl
-	call		FindFile
-	jp		nz, BadFileCallback
 	;; Check file is not too large
 	ld		hl, (size_in_bytes+2)	; upper 16 bit
 	ld		a, h
@@ -915,14 +915,7 @@ TwoFilenamesArgcError:
 	call		PrintStringA
 	ret
 Mv00:
-ValidateTwoFilenames:
-	ld		hl, (dos_argv)
-	call		ValidateFilename
-	ret		nz
-	ld		hl, (dos_argv+2)
-	call		ValidateFilename
-	ret		nz
-	call		HandleOverwrite
+	call		ValidateTwoFilesFirstExistsHandleOverwrite
 	ret		nz
 MvCore:
 	ld		hl, (dos_argv)
@@ -935,6 +928,15 @@ BadFileCallback:
 	ret
 BadFileMsg:
 	defm	"Bad command or filename.\r\n\0"
+
+ValidateTwoFilesFirstExistsHandleOverwrite:
+	call		ValidateOneExistingFile
+	ret		nz
+	ld		hl, (dos_argv+2)
+	call		ValidateFilename
+	ret		nz
+	call		HandleOverwrite
+	ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
@@ -951,13 +953,8 @@ Rm:
 	ld		hl, rmstr
 	jp		OneFilenameArgcError
 RmValidate:
-	ld		hl, (dos_argv)
-	ld		(target_filename_ptr), hl
-	call		ValidateFilename
+	call		ValidateOneExistingFile
 	ret		nz
-	; Search for this file
-	call		FindFile
-	jp		nz, BadFileCallback
 	; Dent *should* now be pointed at our target
 	call		DeleteFile
 	ret
@@ -993,15 +990,7 @@ Cp:
 	ld		hl, cpstr
 	jp		TwoFilenamesArgcError
 Cp00:
-	ld		hl, (dos_argv)
-	call		ValidateFilename
-	ret		nz
-	call		FindFile
-	jp		nz, BadFileCallback
-	ld		hl, (dos_argv+2)
-	call		ValidateFilename
-	ret		nz
-	call		HandleOverwrite
+	call		ValidateTwoFilesFirstExistsHandleOverwrite
 	ret		nz
 	ld		hl, (dos_argv)
 	call		FindFile
@@ -1039,13 +1028,8 @@ ExpectsOneOrTwoArgStr:
 FilenameAddrStr:
 	defm		"(8.3 filename and optional memory address)\r\n\0"
 LoadValidate:
-	ld		hl, (dos_argv)
-	call		ValidateFilename
+	call		ValidateOneExistingFile
 	ret		nz
-	; HL points to a filename we want to load
-	ld		(target_filename_ptr), hl
-	call		FindFile
-	jp		nz, BadFileCallback
 	; At this point, we know the file exists
 	; and the current dent is pointing at it
 	; If we only got the one argument,
@@ -1112,13 +1096,8 @@ Exec:
 	ld		hl, execstr
 	jp		OneFilenameOptionalAddressArgcError
 ExecValidate:
-	ld		hl, (dos_argv)
-	call		ValidateFilename
+	call		ValidateOneExistingFile
 	ret		nz
-	; HL points to a filename we want to load
-	ld		(target_filename_ptr), hl
-	call		FindFile
-	jp		nz, BadFileCallback
 	; If we only got the one argument,
 	; load file to location specified by
 	; FILEADDR sys var
@@ -1176,13 +1155,8 @@ Type:
 	ld		hl, typestr
 	jp		OneFilenameArgcError
 TypeValidate:
-	ld		hl, (dos_argv)
-	ld		(target_filename_ptr), hl
-	call		ValidateFilename
+	call		ValidateOneExistingFile
 	ret		nz
-	; Find file
-	call		FindFile
-	jp		nz, BadFileCallback
 	; Dent *should* now be pointed at our target
 	ld	hl, (fileaddr)
 	call	ReadFile
