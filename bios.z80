@@ -57,6 +57,7 @@ Main:
 	ld		hl, 0x0000
 	ld		(uptime_days), hl
 	; Initialise hardware
+	call		Notify	; Notify(0) turns off both LEDs
 	call		UartInit
 	call		CfSetup
 	call		RTCSetup
@@ -120,3 +121,16 @@ SleepLoop:
 	ret		z
 	halt
 	jr SleepLoop
+
+Notify:
+	ld		b, a
+	bit		0, b
+	jr		z, Notify1Off
+	call		Led1On
+	jr		Notify2
+Notify1Off:
+	call		Led1Off
+Notify2:
+	bit		1, b
+	jp		z, Led2Off
+	jp		Led2On

@@ -1161,6 +1161,9 @@ ExecCore:
 	; Turn on UART buffering
 	ld		a, 0xFF
 	ld		(uart_buffering), a
+	; LED on!
+	ld		a, 0x01
+	call		Notify
 	; Can't actually call hl or (hl), so do this manually
 	; with a push and jump
 	ld	hl, ExecReturnAddress
@@ -1187,6 +1190,9 @@ ExecReturnAddress:
 	; Turn off UART buffering
 	ld		a, 0x00
 	ld		(uart_buffering), a
+	; Led off!
+	ld		a, 0x00
+	call		Notify
 	; Restore stack
 	ld		sp, (dos_stack_backup)
 	ret
