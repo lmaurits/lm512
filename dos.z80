@@ -91,6 +91,7 @@ batchstr:	defm "BATCH\0"
 clsstr:		defm "CLS\0"
 cpstr:		defm "CP\0"
 datestr:	defm "DATE\0"
+echostr:	defm "ECHO\0"
 execstr:	defm "EXEC\0"
 flashstr:	defm "FLASH\0"
 lsstr:		defm "LS\0"
@@ -114,6 +115,7 @@ dos_dispatch_table:
 	defw cpstr, Cp
 	defw datestr, Date
 	defw execstr, Exec
+	defw echostr, Echo
 	defw flashstr, Flash
 	defw lsstr, Ls
 	defw helpstr, DosHelp
@@ -376,6 +378,35 @@ MonthStrings:
 	defm	"JanFebMarAprMayJunJulAugSepOctNovDec"
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; ECHO
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+Echo:
+	ld		a, (dos_argc)
+	ld		b, a
+	ld		hl, dos_argv
+EchoLoop:
+	push		bc
+	ld		e, (hl)
+	inc		hl
+	ld		d, (hl)
+	inc		hl
+	ex		de, hl
+	call		PrintStringA
+	ld		a, " "
+	call		SERIAL_WRITE_A
+	ex		de, hl
+	pop		bc
+	djnz		EchoLoop
+	ld		a, "\r"
+	call		SERIAL_WRITE_A
+	ld		a, "\n"
+	call		SERIAL_WRITE_A
+	ret
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 Flash:
 	ld		a, (dos_argc)
@@ -583,6 +614,7 @@ DosHelp:
 	defm "CLS\t\tClear screen\n\r"
 	defm "CP\t\tCopy file\n\r"
 	defm "DATE\t\tPrint/set date and time\n\r"
+	defm "ECHO\t\tEcho string\n\r"
 	defm "EXEC\t\tLoad and execute machine code from file\n\r"
 	defm "FLASH\t\tFlash ROM from file\n\r"
 	defm "LOAD\t\tLoad file onto memory\n\r"
