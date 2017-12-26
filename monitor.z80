@@ -579,7 +579,7 @@ i_reg_labels:
 Out:
 	ld		a, (mon_argc)
 	cp		2
-	jr		z, Out00
+	jr		z, OutValidate
 	;; Argc error
 	ld		hl, outstr
 	call		PrintStringA
@@ -590,17 +590,13 @@ Out:
 	ret
 OutArgsStr:
 	defm		"(port, value).\r\n\0"
-Out00:
+OutValidate:
 	ld		hl, (mon_argv)
 	call		ValidateValue
-	jr		z, Out01
-	ret
-Out01:
+	ret		nz
 	ld		hl, (mon_argv+2)
 	call		ValidateValue
-	jr		z, Out02
-	ret
-Out02:
+	ret		nz
 	ld		hl, (mon_argv)
 	call		Read8bit
 	ld		c, a
