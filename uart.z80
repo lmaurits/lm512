@@ -258,20 +258,20 @@ CSRTABLE:
 	defb	11001100b
 	defb	11001100b
 
-Led1On:
-	ld	a, 0x80
-	jr	LedReset
-Led2On:
-	ld	a, 0x40
-LedReset:
-	out	(.RSTOP), a
-	ret
-
-Led1Off:
-	ld	a, 0x80
-	jr	LedSet
-Led2Off:
-	ld	a, 0x40
-LedSet:
+;Led1On:
+;	ld	a, 0x80
+;	jr	LedReset
+;Led2On:
+;	ld	a, 0x40
+;LedReset:
+;	out	(.RSTOP), a
+;	ret
+;
+;Led1Off:
+;	ld	a, 0x80
+;	jr	LedSet
+;Led2Off:
+;	ld	a, 0x40
+;LedSet:
 	out	(.SETOP), a
 	ret
