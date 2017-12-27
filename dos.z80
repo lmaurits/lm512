@@ -26,6 +26,12 @@ DosInit:
 	ld		(fileaddr), hl
 	ld		hl, 0xFFFF
 	ld		(prgstack), hl
+	ld		hl, proc_table
+	ld		b, 16
+ZeroLoop:
+	ld		(hl), 0x00
+	inc		hl
+	djnz		ZeroLoop
 	; Setup UART buffering
 	ld		a, 0x00
 	ld		(uart_buffering), a
@@ -100,6 +106,7 @@ mvstr:		defm "MV\0"
 serloadstr:	defm "SERLOAD\0"
 receivestr:	defm "RECEIVE\0"
 resetstr:	defm "RESET\0"
+fgstr:		defm "FG\0"
 resumestr:	defm "RESUME\0"
 rmstr:		defm "RM\0"
 loadstr:	defm "LOAD\0"
@@ -125,7 +132,7 @@ dos_dispatch_table:
 	defw mvstr, Mv
 	defw receivestr, Receive
 	defw resetstr, Reset
-	defw resumestr, Resume
+	defw fgstr, Fg
 	defw rmstr, Rm
 	defw serloadstr, SerialLoad
 	defw setstr, Set
@@ -1151,6 +1158,9 @@ ExecFileAtExecAddr:
 	; Dent *should* now be pointed at our target
 	; Read the file into memory
 ExecCore:
+	push		hl
+	call		FindAvailBank
+	pop		hl
 	call		ReadFile
 	; Setup stack
 	ld		(dos_stack_backup), sp
@@ -1183,29 +1193,118 @@ ExecSuspendAddress:
 	exx
 	push		ix
 	push		iy
+	call		GetMemBank
+	ld		(most_rec_susp), a
+	ld		hl, StoppedStr
+	call		PrintStringA
+	ld		hl, message_buffer
+	ld		a, (most_rec_susp)
+	dec		a
+	call		StrfHex
+	call 		TerminateLine
+	ld		hl, message_buffer
+	call		PrintStringA
+	ld		hl, proc_table
+	ld		a, (most_rec_susp)
+	ld		b, 0
+	ld		c, a
+	dec		c
+	dec		c
+	add		hl, bc
+	add		hl, bc
+	; Furious Zilogian thrashing!
 	ld		(dos_resume_stack_ptr), sp
+	ld		de, (dos_resume_stack_ptr)
+	ld		(hl), e
+	inc		hl
+	ld		(hl), d
 ExecReturnAddress:
+	; Restore DOS bank and stack
+	ld		sp, (dos_stack_backup)
+	ld		a, 1
+	call		SetMemBank
 	; Turn off UART buffering
 	ld		a, 0x00
 	ld		(uart_buffering), a
 	; Led off!
-	ld		a, 0x00
-	call		Notify
-	; Restore stack
-	ld		sp, (dos_stack_backup)
+;	ld		a, 0x00
+;	call		Notify
+	ret
+StoppedStr:
+	defm		"Stopped job \0"
+
+FindAvailBank:
+	ld		b, 2
+	ld		hl, proc_table
+FindBankLoop:
+	ld		a, (hl)
+	inc		hl
+	or		(hl)
+	inc		hl
+	cp		0
+	jr		z, FindBankFound
+	inc		b
+	jr		FindBankLoop
+FindBankFound:
+	ld		a, b
+	call		SetMemBank
 	ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
-; RESUME
+; FG
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-Resume:
-	ld		(dos_stack_backup), sp
-	ld		sp, (dos_resume_stack_ptr)
+Fg:
+	ld		a, (dos_argc)
+	cp		0
+	jr		z, FgMostRecent
+	cp		1
+	jr		z, FgValidate
+	;; Argc error
+	ld		hl, fgstr
+	call		PrintStringA
+	ld		hl, ExpectsExactlyOneArgStr
+	call		PrintStringA
+	ld		hl, JobIdArgsStr
+	call		PrintStringA
+	ret
+JobIdArgsStr:
+	defm		"(job ID)\r\n\0"
+FgValidate:
+	ld		hl, (dos_argv)
+	call		ValidateValue
+	ret		nz
+	call		Read8bit
+	add		1
+	jr		FgCore
+FgMostRecent:
+	ld		a, (most_rec_susp)
+FgCore:
+	; Switch to correct bank
+	call		SetMemBank
+	; Set up stack, more Zilog thrashing
+	ld		hl, proc_table
+	dec		a
+	dec		a
+	ld		b, 0
+	ld		c, a
+	add		hl, bc
+	add		hl, bc
+	ld		e, (hl)
+	inc		hl
+	ld		d, (hl)
+	ex		de, hl
+	; Check for zero
+	ld		a, h
+	or		l
+	jr		z, FgNoJob
+	ld		sp, hl
+	; Renable UART buffering
 	ld		a, 0xFF
 	ld		(uart_buffering), a
+	; Setup registers
 	pop		iy
 	pop		ix
 	ex		af, af'
@@ -1220,7 +1319,14 @@ Resume:
 	pop		de
 	pop		bc
 	pop		af
+	; Resume execution!
 	ret
+FgNoJob:
+	ld		hl, NoJobStr
+	call		PrintStringA
+	ret
+NoJobStr:
+	defm		"No job\r\n\0"
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;

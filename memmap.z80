@@ -12,7 +12,24 @@ SYSSTACK:		equ 0x7FFF
 
 org			RAMBASE
 int_vector:		defs 16
+
+; BIOS variables
+START_BIOS_RAM:
 mem_bank:		defs 1
+END_BIOS_RAM:
+
+; Stuff for the monitor
+START_MON_RAM:
+mon_linebuf:		defs 80
+mon_argc:		defs 1
+mon_argv:		defs 2
+mon_stack_backup:	defs 22
+mon_reg_stack:		defs 2
+END_MON_RAM:
+
+; Stuff for the inbuilt DOS
+START_DOS_RAM:
+;; Interrupt stuff
 ticks:			defs 1
 alarm_tick:		defs 1
 alarm_countdown:	defs 1
@@ -21,31 +38,35 @@ uptime_secs:		defs 1
 uptime_mins:		defs 1
 uptime_hours:		defs 1
 uptime_days:		defs 2
-message_buffer:		defs 80
 uart_buffering:		defs 1
 uart_buffer:		defs 16
 uart_buffer_pointer:	defs 2
 uart_buffer_size:	defs 1
 
+;; Sys variables
+execaddr:		defs 2
+fileaddr:		defs 2
+prgstack:		defs 2
 
-; Stuff for the inbuilt DOS
+; Batch stuff
+line_start:		defs 2
+line_end:		defs 2
+
+; Ls vars
+file_count:		defs 2
+total_size:		defs 4
+
+; Process table
+proc_table:		defs 16
+most_rec_susp:		defs 1
+;; Command line stuff
 dos_linebuf:		defs 80
 dos_argc:		defs 1
 dos_argv:		defs 32
 dos_stack_backup:	defs 2
 dos_resume_stack_ptr:	defs 2
+message_buffer:		defs 80
 
-; Stuff for the monitor
-mon_linebuf:		defs 80
-mon_argc:		defs 1
-mon_argv:		defs 2
-mon_stack_backup:	defs 22
-mon_reg_stack:		defs 2
-
-; Sys variables
-execaddr:		defs 2
-fileaddr:		defs 2
-prgstack:		defs 2
 
 ; Bin2Dec
 B2DINV:  DS 8            ; space for 64-bit input value (LSB first)
@@ -53,10 +74,11 @@ B2DBUF:  DS 20           ; space for 20 decimal digits
 B2DEND:  DS 1            ; space for terminating 0
 
 ; Stuff for the FAT driver
+START_FAT_RAM:
 fat_sector_buffer:	defs 512	
 fat_buffer_index:	defs 2
-; FAT specs table ;;;;;;;;;;;
 
+; FAT specs table ;;;;;;;;;;;
 partition_start_sec:	defs 4
 fat_spec_table:		
 bytes_per_sector:	defs 2
@@ -112,14 +134,8 @@ filename_buffer:	defs 16
 target_filename_ptr:	defs 2
 need_to_add_dir_end:	defs 1
 
-; Batch stuff
-line_start:		defs 2
-line_end:		defs 2
-
-; Ls vars
-file_count:		defs 2
-total_size:		defs 4
-
-ENDOFRAM:		defs 0
+END_FAT_RAM:
+END_DOS_RAM:
+END_RAM:
 ; Rewind!
 seek 0
