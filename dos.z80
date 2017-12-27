@@ -1178,7 +1178,12 @@ ExecCore:
 	push	hl
 	ld	hl, (execaddr)
 	jp	(hl)
+ExecTerminateAddress:
+	call            GetMemBank
+	call		ClearProcTable
+	jr		ExecReturnAddress
 ExecSuspendAddress:
+	; Save all registers
 	push		af
 	push		bc
 	push		de
@@ -1193,8 +1198,11 @@ ExecSuspendAddress:
 	exx
 	push		ix
 	push		iy
-	call		GetMemBank
-	ld		(most_rec_susp), a
+	; Backup stack pointer in proc table
+	call            GetMemBank
+	ld              (most_rec_susp), a
+	call		UpdateProcTable
+	; Output "stopped" message
 	ld		hl, StoppedStr
 	call		PrintStringA
 	ld		hl, message_buffer
@@ -1204,20 +1212,6 @@ ExecSuspendAddress:
 	call 		TerminateLine
 	ld		hl, message_buffer
 	call		PrintStringA
-	ld		hl, proc_table
-	ld		a, (most_rec_susp)
-	ld		b, 0
-	ld		c, a
-	dec		c
-	dec		c
-	add		hl, bc
-	add		hl, bc
-	; Furious Zilogian thrashing!
-	ld		(dos_resume_stack_ptr), sp
-	ld		de, (dos_resume_stack_ptr)
-	ld		(hl), e
-	inc		hl
-	ld		(hl), d
 ExecReturnAddress:
 	; Restore DOS bank and stack
 	ld		sp, (dos_stack_backup)
@@ -1232,6 +1226,41 @@ ExecReturnAddress:
 	ret
 StoppedStr:
 	defm		"Stopped job \0"
+
+ClearProcTable:
+	call		SetProcTablePointer
+	ld		(hl), 0x00
+	inc		hl
+	ld		(hl), 0x00
+	ret
+
+UpdateProcTable:
+	call		SetProcTablePointer
+	; Furious Zilogian thrashing!
+	pop		bc ; get rid of ret add
+	ld		(dos_resume_stack_ptr), sp
+	push		bc ; put ret add back
+	ld		de, (dos_resume_stack_ptr)
+	; Now DE = stack, put it in table
+	ld		(hl), e
+	inc		hl
+	ld		(hl), d
+	ret
+
+SetProcTablePointer:
+	ld		hl, proc_table
+	; Now HL = start of proc
+	;      A = mem bank
+	ld		b, 0
+	ld		c, a
+	dec		c
+	dec		c
+	; Now BC = job id (= membank - 2)
+	add		hl, bc
+	add		hl, bc
+	; Now HL = relevant point in proc table
+	ret
+
 
 FindAvailBank:
 	ld		b, 2
