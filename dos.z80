@@ -529,7 +529,6 @@ LsEnd:
 	call	PrintStringA
 	ld	hl, (file_count)
 	call	B2D16
-	ld	hl, B2DBUF
 	call	PrintStringA
 	ld	hl, FilesStr
 	call	PrintStringA
@@ -539,7 +538,6 @@ LsEnd:
 	ld	hl, (total_size)
 	ld	de, (total_size+2)
 	call	B2D32
-	ld	hl, B2DBUF
 	call	PrintStringA
 	ld	hl, BytesStr
 	call	PrintStringA
