@@ -64,11 +64,8 @@ Main:
 	call		CfSetup
 	call		RTCSetup
 	call		InterruptSetup
-MainLoop:
 	; Start DOS
-	call		Dos
-	; Loop - this should never happen, but safety first.
-	jp MainLoop
+	jp		Dos
 
 UartInit:
 	ld		a, 10100011b
