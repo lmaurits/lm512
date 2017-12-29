@@ -16,14 +16,14 @@ Dos:
 DosInit:
 	; INITIALISE EVERYTHING
 	
-	; Print welcome message
-	ld hl, welcomestr
-	call PrintStringA
 	; Initialise system variables
 	ld		hl, 0x8000
 	ld		(execaddr), hl
 	ld		hl, 0x8000
 	ld		(fileaddr), hl
+	ld		hl, 0x7FFF
+	ld		(sysstack), hl
+	ld		sp, hl
 	ld		hl, 0xFFFF
 	ld		(prgstack), hl
 	ld		hl, used_jobs
@@ -40,31 +40,23 @@ ZeroLoop:
 	ld		(uart_buffer_size), a
 	ld		hl, uart_buffer
 	ld		(uart_buffer_pointer), hl
+	; Print welcome message
+	ld 		hl, welcomestr
+	call 		PrintStringA
 	; Initialise filesystem
 	call		InitFAT
 	; Check for AUTOEXEC.BAT
 	call		DosAutoExec
 	; Start processing commands
-	jp DosLoop
+	jr DosLoop
 	welcomestr: defm "Welcome to LM-512 microcomputer system.\n\r\0"
-
-DosAutoExec:
-	; CHECK FOR FILE NAMED AUTOEXEC.BAT
-	; IF FOUND, EXECUTE AS BATCH FILE
-
-	ld		hl, DosAutoExecStr
-	ld		(target_filename_ptr), hl
-	call		FindFile
-	ret		nz
-	; Dent *should* now be pointed at our target
-	jp		BatchCallback
-DosAutoExecStr:
-	defm		"AUTOEXEC.BAT\0"
 
 DosLoop:
 	; INFINITE LOOP OF READING A COMMAND LINE,
 	; PARSING IT AND DISPATCHING THE COMMAND
 
+	ld		hl, (sysstack)
+	ld		sp, hl
 	ld		hl, dos_promptstr
 	call		PrintStringA
 	ld		hl, dos_linebuf
@@ -86,6 +78,19 @@ DosHandleLine:
 	ld		de, dos_dispatch_table
 	call		HandleCommandLine
 	ret
+
+DosAutoExec:
+	; CHECK FOR FILE NAMED AUTOEXEC.BAT
+	; IF FOUND, EXECUTE AS BATCH FILE
+
+	ld		hl, DosAutoExecStr
+	ld		(target_filename_ptr), hl
+	call		FindFile
+	ret		nz
+	; Dent *should* now be pointed at our target
+	jp		BatchCallback
+DosAutoExecStr:
+	defm		"AUTOEXEC.BAT\0"
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
@@ -783,6 +788,8 @@ execaddrstr:
 	defm		"EXECADDR\0"
 fileaddrstr:
 	defm		"FILEADDR\0"
+sysstackstr:
+	defm		"SYSSTACK\0"
 prgstackstr:
 	defm		"PRGSTACK\0"
 int1str:defm		"INT1\0"
@@ -797,6 +804,7 @@ int8str:defm		"INT8\0"
 SetTable:
 	defw execaddrstr, execaddr
 	defw fileaddrstr, fileaddr
+	defw sysstackstr, sysstack
 	defw prgstackstr, prgstack
 	defw int1str, int_vector
 	defw int2str, int_vector+2

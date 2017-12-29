@@ -46,6 +46,7 @@ uart_buffer_size:	defs 1
 ;; Sys variables
 execaddr:		defs 2
 fileaddr:		defs 2
+sysstack:		defs 2
 prgstack:		defs 2
 
 ; Batch stuff
