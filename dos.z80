@@ -101,6 +101,7 @@ cpstr:		defm "CP\0"
 datestr:	defm "DATE\0"
 echostr:	defm "ECHO\0"
 execstr:	defm "EXEC\0"
+fgstr:		defm "FG\0"
 flashstr:	defm "FLASH\0"
 lsstr:		defm "LS\0"
 monstr:		defm "MONITOR\0"
@@ -108,7 +109,6 @@ mvstr:		defm "MV\0"
 serloadstr:	defm "SERLOAD\0"
 receivestr:	defm "RECEIVE\0"
 resetstr:	defm "RESET\0"
-fgstr:		defm "FG\0"
 resumestr:	defm "RESUME\0"
 rmstr:		defm "RM\0"
 loadstr:	defm "LOAD\0"
@@ -199,8 +199,9 @@ BatchCallback:
 	; At this point, we've matched
 	; Read the file into memory
 	ld		hl, (fileaddr)
+	push		hl
 	call		ReadFile
-	ld		hl, (fileaddr)
+	pop		hl
 	ld		(line_start), hl
 	ld		bc, (size_in_bytes)
 BatchLoop:
@@ -293,8 +294,9 @@ SetTimeFromString:
 	ret
 DateGet:
 	ld hl, 		message_buffer
+	push		hl
 	call		BuildTimeStr
-	ld hl,		message_buffer
+	pop		hl
 	call 		PrintStringA
 	ret
 BuildTimeStr:
@@ -753,9 +755,7 @@ SetValidate:
 	call		MapString2Address
 	; Now HL is either a RAM address or 0x0000
 	ld		a, l
-	cp		0
-	jr		nz, SetDoIt
-	ld		a, h
+	or		h
 	cp		0
 	jr		nz, SetDoIt
 	; At this point we know the address is 0000, i.e. we did
@@ -777,9 +777,9 @@ SetDoIt:
 ExpectsExactlyTwoArgsStr:
 	defm		" expects exactly two args \0"
 SetArgsStr:
-	defm		"(one variable name, one value).\r\n\0"
+	defm		"(var name, value).\r\n\0"
 SetBadVarStr:
-	defm		"Unrecognised variable.  Run SHOW to see all vars.\r\n\0"
+	defm		"Unrecognised var.  Run SHOW to see all vars.\r\n\0"
 
 execaddrstr:
 	defm		"EXECADDR\0"
@@ -838,6 +838,7 @@ ShowLoop:
 	inc		hl
 	ex		de, hl
 	ld		hl, message_buffer
+	push		hl
 	inc		bc
 	ld		a, (bc)
 	push		bc
@@ -847,7 +848,7 @@ ShowLoop:
 	ld		a, (bc)
 	call		StrfHex
 	call		TerminateLine
-	ld		hl, message_buffer
+	pop		hl
 	call		PrintStringA
 	jr		ShowLoop
 SeparatorStr:
@@ -901,11 +902,12 @@ HandleOverwriteAskLoop:
 	call		PrintStringA
 HandleOverwriteAskQuickEnter:
 	ld		hl, message_buffer
+	push		hl
 	call		SERIAL_READ_A
 	ld		(hl), a
 	inc		hl
 	call		TerminateLine
-	ld		hl, message_buffer
+	pop		hl
 	call		ConvertToUpper
 	call		PrintStringA
 	ld		hl, message_buffer
@@ -923,7 +925,7 @@ HandleOverwriteDeny:
 	or		1 ; Clear zero flag
 	ret
 FileExistsStr:
-	defm		"File exists!  Overwrite? (Y/N) \0"
+	defm		"File exists! Overwrite? (Y/N) \0"
 YNPromptStr:
 	defm		"Enter Y or N: \0"
 
@@ -1253,9 +1255,10 @@ HandleCtrlZ:
 	ld		a, (active_job)
 	inc		a
 	ld		hl, message_buffer
+	push		hl
 	call		StrfHex
 	call 		TerminateLine
-	ld		hl, message_buffer
+	pop		hl
 	call		PrintStringA
 	jr		ReturnToDos
 StoppedStr:
@@ -1554,9 +1557,10 @@ Uptime:
 	ld		hl, (uptime_days)
 	call		B2D16
 	ld		hl, message_buffer
+	push		hl
 	call		AppendB2D
 	ld		(hl), "\0"
-	ld		hl, message_buffer
+	pop		hl
 	call		PrintStringA
 	ld		hl, days_string
 	call		PrintStringA
@@ -1564,6 +1568,7 @@ Uptime:
 	call		B2D8
 	call		PadTime
 	ld		hl, message_buffer
+	push		hl
 	call		AppendB2D
 	ld		(hl), ":"
 	inc		hl
@@ -1582,7 +1587,7 @@ Uptime:
 	pop		hl
 	call		AppendB2D
 	call		TerminateLine
-	ld		hl, message_buffer
+	pop		hl
 	call		PrintStringA
 	ret
 up_string:
