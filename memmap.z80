@@ -57,8 +57,10 @@ file_count:		defs 2
 total_size:		defs 4
 
 ; Process table
-proc_table:		defs 16
-most_rec_susp:		defs 1
+used_jobs:		defs 1
+proc_table:		defs 58
+active_job:		defs 1
+last_susp_job:		defs 1
 ;; Command line stuff
 dos_linebuf:		defs 80
 dos_argc:		defs 1
