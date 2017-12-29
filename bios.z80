@@ -37,17 +37,19 @@ defb 0x00
 defm 0x00, 0x00, 0x00				; 0x0038 reserved for int
 
 ; Code generating includes
+
 include 'mmu.z80'
 include 'uart.z80'
 include 'cf.z80'
 include 'rtc.z80'
 
-
 ; Main BIOS entry point
 Main:
+	; Setup memory
 	ld		sp, SYSSTACK
 	ld		a, 1
 	call		SetMemBank
+	; Initialise variables
 	ld		a, 0
 	ld		(ticks), a
 	ld		(alarm_flag), a
@@ -78,9 +80,9 @@ UartInit:
 RTCSetup:
 	; Set periodic rate to 500ms
         ld a, 00001010b
-	call		SetPeriodicInterruptRate
+	call		SetPeriodicIntRate
 	; Turn on periodic interrupt
-	call		EnablePeriodicInterrupt
+	call		EnablePeriodicInt
 	ret
 
 InterruptSetup:

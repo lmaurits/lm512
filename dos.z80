@@ -735,7 +735,6 @@ SerialLoadStr:
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-; This could be made smaller by sharing code with cli/Dispatch
 Set:
 	ld		a, (dos_argc)
 	cp		2
@@ -1194,17 +1193,10 @@ ExecCore:
 ;	call		Notify
 	; Can't actually call hl or (hl), so do this manually
 	; with a push and jump
-	ld	hl, ExecReturnAddress
-	push	hl
-	ld	hl, (execaddr)
-	jp	(hl)
-
-ExecTerminateAddress:
-	; Call Ctrl-C handler
-	ld		hl, (ctrl_c_handler)
-	call		CallIfNotZero
-	jr		ExecReturnAddress
-
+	ld		hl, TerminateProcess
+	push		hl
+	ld		hl, (execaddr)
+	jp		(hl)
 ExecAbort:
 	pop		hl	; Get rid of load address
 	ld		hl, ExecAbortStr
@@ -1212,7 +1204,27 @@ ExecAbort:
 	ret
 ExecAbortStr:
 	defm		"No Job IDs/mem banks! :(\r\n\0"
-ExecSuspendAddress:
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; Handlers for Ctrl-C and Ctrl-Z
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+CallIfNotZero:
+	ld		a, h
+	or		l
+	ret		z
+	jp		(hl)
+
+HandleCtrlC:
+	; Call Ctrl-C handler
+	ld		hl, (ctrl_c_handler)
+	call		CallIfNotZero
+	jr		TerminateProcess
+
+HandleCtrlZ:
 	; Save all registers
 	push		af
 	push		bc
@@ -1228,13 +1240,13 @@ ExecSuspendAddress:
 	exx
 	push		ix
 	push		iy
+	; Call Ctrl-Z handler
+	ld		hl, (ctrl_z_handler)
+	call		CallIfNotZero
 	; Backup stack pointer etc. in proc table
 	ld		a, (active_job)
 	call		SuspendStackPush
 	call		UpdateProcTable
-	; Call Ctrl-Z handler
-	ld		hl, (ctrl_z_handler)
-	call		CallIfNotZero
 	; Output "stopped" message
 	ld		hl, StoppedStr
 	call		PrintStringA
@@ -1246,7 +1258,10 @@ ExecSuspendAddress:
 	ld		hl, message_buffer
 	call		PrintStringA
 	jr		ReturnToDos
-ExecReturnAddress:
+StoppedStr:
+	defm		"Stopped job \0"
+
+TerminateProcess:
 	;		Remove process from proc table
 	ld		a, (active_job)
 	call		ClearProcTable
@@ -1262,16 +1277,15 @@ ReturnToDos:
 ;	ld		a, 0x00
 ;	call		Notify
 	ret
-StoppedStr:
-	defm		"Stopped job \0"
 
-CallIfNotZero:
-	ld		a, h
-	or		l
-	ret		z
-	jp		(hl)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; PROCESS TABLE STUFF
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 SetProcTablePointer:
+	; Set IX to the Ath entry in the process table
 	ld		ix, proc_table	; Start of proc_table
 	cp		0		; Return immediately for job 0
 	ret		z
@@ -1283,6 +1297,7 @@ SetProcTablePointerLoop:
 	ret
 
 UpdateProcTable:
+	; Write details of process A to proc table
 	call		SetProcTablePointer
 	call		GetMemBank
 	ld		(ix+0), a
@@ -1304,7 +1319,6 @@ UpdateProcTable:
 
 ClearProcTable:
 	; Remove Job ID in A from used_jobs and proc_table
-	; FIXME fails badly for id=0!
 	push		af
 	ld		c, 11111110b	; AND used_jobs with this to clear job ID 0
 	cp		0		; If we are Job ID 0, this is all
@@ -1314,10 +1328,12 @@ ClearProcTableLoop1:
 	rlc		c
 	djnz		ClearProcTableLoop1
 ClearProcTable0:
+	; Turn of our bit in the used_jobs byte
 	ld		a, (used_jobs)	; Get used_jobs
 	and		c		; Turn off our bit
 	ld		(used_jobs), a	; Set used_jobs
 	pop		af		; Get our job ID back
+	; Now clear the proce table
 	call		SetProcTablePointer
 	ld		a, 00
 	ld		b, 7

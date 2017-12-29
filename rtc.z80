@@ -27,17 +27,17 @@ UnsetUpdateInhibit:
 	out (.CTRL), a
 	ret
 
-SetPeriodicInterruptRate:
+SetPeriodicIntRate:
 	and 00001111b		; Mask off non-rate bits
 	out (.RATES), a
 	ret
 
-EnablePeriodicInterrupt:
+EnablePeriodicInt:
 	ld a, 00000100b
 	out (.IE), a
 	ret
 
-DisblePeriodicInterrupt:
+DisablePeriodicInt:
 	ld a, 00000000b
 	out (.IE), a
 	ret

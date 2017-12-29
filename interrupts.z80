@@ -14,37 +14,48 @@ diskhandler:
 	reti
 
 tickhandler:
+	; Back up registers which we touch
+	; The fewer the better!
 	push	hl
 	push	bc
-	push	af		; Save AF and HL
-	; Buffered UART stuff
+	push	af
+	; Check if UART buffering is on
 	ld	a, (uart_buffering)
 	cp	0xFF
 	jr	nz, tickhandler_uptime
 BufferConsumeLoop:
-	; Anything to read?
+	; Check if the UART FIFO has any chars in it.
 	in a, (.SRA)		; Read status reg
 	and 00000001b		; Mask off receive ready
 	xor 00000001b		; Compare receive ready to 1
 	jr	nz, tickhandler_uptime
-	; Got room?
+	; Do we have room in the buffer for those chars?
 	ld	a, (uart_buffer_size)
 	cp	16
 	jr	z, tickhandler_uptime
-	; Add to buffer
+	; Read a char from the UART FIFO
 	in	a, (.RHRA)
+	; Check for various special control characters
+	; Jump to handle them if needed
 	cp	0x03		; Ctrl C
 	jr	z, HandleCtrlC
 	cp	0x1A		; Ctrl Z
 	jr	z, HandleCtrlZ
-	jr	BufferConsumeStore
+	; Copy UART char into buffer
+	ld	hl, (uart_buffer_pointer)
+	ld	(hl), a
+	inc	hl
+	ld	(uart_buffer_pointer), hl
+	ld	hl, uart_buffer_size
+	inc	(hl)
+	jr	BufferConsumeLoop
 HandleCtrlC:
-	; This is a Ctrl-C, kill current process!
-	ld	hl, ExecTerminateAddress
+	; This is a Ctrl-C, terminate current process!
+	ld	hl, HandleCtrlC
 	jr	StackHack
 HandleCtrlZ:
 	; This is a Ctrl-Z, suspend current process!
-	ld	hl, ExecSuspendAddress
+	ld	hl, HandleCtrlZ
 StackHack:
 	; Hack the return address
 	pop	af
@@ -59,16 +70,6 @@ StackHack:
 	push	hl
 	push	bc
 	push	af
-	; Break out of buffer looop
-	jr	tickhandler_uptime
-BufferConsumeStore:
-	ld	hl, (uart_buffer_pointer)
-	ld	(hl), a
-	inc	hl
-	ld	(uart_buffer_pointer), hl
-	ld	hl, uart_buffer_size
-	inc	(hl)
-	jr	BufferConsumeLoop
 
 tickhandler_uptime:
 	;;;; Handle tick counter
