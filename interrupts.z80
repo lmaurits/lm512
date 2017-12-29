@@ -38,9 +38,9 @@ BufferConsumeLoop:
 	; Check for various special control characters
 	; Jump to handle them if needed
 	cp	0x03		; Ctrl C
-	jr	z, HandleCtrlC
+	jr	z, StackHandleCtrlC
 	cp	0x1A		; Ctrl Z
-	jr	z, HandleCtrlZ
+	jr	z, StackHandleCtrlZ
 	; Copy UART char into buffer
 	ld	hl, (uart_buffer_pointer)
 	ld	(hl), a
@@ -49,11 +49,11 @@ BufferConsumeLoop:
 	ld	hl, uart_buffer_size
 	inc	(hl)
 	jr	BufferConsumeLoop
-HandleCtrlC:
+StackHandleCtrlC:
 	; This is a Ctrl-C, terminate current process!
 	ld	hl, HandleCtrlC
 	jr	StackHack
-HandleCtrlZ:
+StackHandleCtrlZ:
 	; This is a Ctrl-Z, suspend current process!
 	ld	hl, HandleCtrlZ
 StackHack:
