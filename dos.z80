@@ -720,13 +720,13 @@ transfer_inner_loop:
 	call		SERIAL_WRITE_A
 	jr		transfer_outer_loop
 SerialLoadEnd:
+	push		de		; Preserve byte count
 	ex		de,hl		; Byte count in hl
-	push		de
 	call		B2D16		; Decimalise
 	call		PrintStringA
 	ld		hl, SerialLoadStr
 	call		PrintStringA
-	pop		de
+	pop		de		; Get byte count back
 	ret
 SerialLoadStr:
 	defm		" bytes transferred.\r\n\0"
