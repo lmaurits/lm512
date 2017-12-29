@@ -413,6 +413,8 @@ BuildFilenameStringAddDirSlash:
 	ld	(hl), "/"		; If we're a dir, add a slash
 	inc	hl
 BuildFilenameEnd:
+	; Terminate string
+	ld	(hl), "\0"
 	ret
 
 ;;;;;;;;;;;;
@@ -646,7 +648,6 @@ FindFileLoop:
 	jr	z, FindFileNext
 	; Compare names
 	call	BuildFilenameString
-	ld	(hl), "\0"		; BuildFilenameString doesn't terminate!
 	ld	hl, filename_buffer
 	ld	de, (target_filename_ptr)
 	call	StrictStrCmp

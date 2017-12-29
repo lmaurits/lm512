@@ -532,19 +532,32 @@ LsNext:
 LsEnd:
 	ld	hl, TotalStr
 	call	PrintStringA
+	ld	a, 6
+	call	PrintSpaces
 	ld	hl, (file_count)
 	call	B2D16
-	call	PrintStringA
+	call	PrintB2D
 	ld	hl, FilesStr
 	call	PrintStringA
 
-	ld	hl, BytesLeadStr
-	call	PrintStringA
+	ld	a, 12
+	call	PrintSpaces
 	ld	hl, (total_size)
 	ld	de, (total_size+2)
 	call	B2D32
-	call	PrintStringA
+	call	PrintB2D
 	ld	hl, BytesStr
+	call	PrintStringA
+	ret
+TotalStr:
+	defm	"\nTotal:\0"
+FilesStr:
+	defm	" files\r\n\0"
+BytesStr:
+	defm	" bytes\r\n\0"
+
+PrintB2D:
+	ld	hl, B2DBUF
 	call	PrintStringA
 	ret
 
@@ -552,6 +565,7 @@ LsHandleFile:
 	ld	hl, (file_count)
 	inc	hl
 	ld	(file_count), hl
+
 	ld	hl, (total_size)
 	ld	de, (size_in_bytes)
 	add	hl, de
@@ -560,62 +574,38 @@ LsHandleFile:
 	ld	de, 0
 	adc	hl, de
 	ld	(total_size+2), hl
-	ld	hl, filename_buffer
-	ld	a, " "
-	ld	b, 12
-LsBlankingLoop:
-	ld	(hl), a
-	inc	hl
-	djnz	LsBlankingLoop
+
+	; Print filename
 	call	BuildFilenameString
 	ld	hl, filename_buffer
-	ld	de, message_buffer
-	ld	bc, 12
-	ldir
-	; Ugly, ugly clean up
-	ld	de, message_buffer
-	ld	b, 12
-LsCleanLoop:
-	ld	a, (de)
-	cp	"\0"
-	jr	z, LsCleanFix
-	inc	de
-	djnz	LsCleanLoop
-	jr	LsUgh
-LsCleanFix:
-	ld	a, " "
-	ld	(de), a
-	jr	LsCleanLoop
-LsUgh:
-	push	de
+	call	StrLen
+	push	af
+	call	PrintStringA
+	pop	bc
+
+	; Print spaces
+	ld	a, 12
+	sub	b
+	call	PrintSpaces
+
+	; Print size
 	ld	hl, (size_in_bytes)
 	ld	de, (size_in_bytes+2)
 	call	B2D32
-	pop	hl
-	ld	a, 24
-	sub	c
-	push	bc
-	ld	b, a
-LsSpaceLoop:
-	ld	(hl), " "
-	inc	hl
-	djnz	LsSpaceLoop
-	pop	bc
-	call	AppendB2D
-	ld	(hl), "\0"
-	ld	hl, message_buffer
-	call	PrintStringA
+	call	PrintB2D
 	ld	hl, BytesStr
 	call	PrintStringA
 	ret
-TotalStr:
-	defm	"\nTotal:\t\t\t\0"
-FilesStr:
-	defm	" files\r\n\0"
-BytesLeadStr:
-	defm	"\t\t\t\0"
-BytesStr:
-	defm	" bytes\r\n\0"
+
+PrintSpaces:
+	cp	0
+	ret	z
+	ld	b, a
+	ld	a, " "
+SpacesLoop:
+	call	WriteA
+	djnz	SpacesLoop
+	ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
