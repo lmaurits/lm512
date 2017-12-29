@@ -321,18 +321,15 @@ BuildTimeStr:
 	inc hl
 	ld		a, d
 	; Turn month into non-BCD
-	ld		b, a
-	; Mask off 10 digits in A
-	and		00001111b
-	srl 		b	; Shift down 10 digi
-	srl		b
-	srl		b
-	srl		b
-TimeStrLoop:
+	; Is the 10 digit non-zero?
+	bit		4, a
+	jr		z, MonthDeBCDed
+	; If so, add 10.
+	and		0x0F
 	add		10
-	djnz		TimeStrLoop
+MonthDeBCDed:
 	; Now deduct 1 (so Jan is offset 0)
-	sub		1
+	dec		a
 	; Now multiply A by 3 (length of a month str)
 	ld		b, a
 	add		b
@@ -346,10 +343,10 @@ TimeStrLoop:
 	ld		bc, 3
 	ldir
 	ex		de, hl
-	ld (hl), " "
-	inc hl
-	; Day
+	ld		(hl), " "
+	inc		hl
 
+	; Day
 	push		hl		; Save string pointer
 	call		RTC_READ
 	pop		hl		; Restore string pointer
