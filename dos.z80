@@ -1434,6 +1434,13 @@ FgCore:
 	ld		l, (ix+1)
 	ld		h, (ix+2)
 	ld		sp, hl
+	; Set up control char handlers
+	ld		l, (ix+3)
+	ld		h, (ix+4)
+	ld		(ctrl_c_handler), hl
+	ld		l, (ix+5)
+	ld		h, (ix+6)
+	ld		(ctrl_z_handler), hl
 	; Renable UART buffering
 	ld		a, 0xFF
 	ld		(uart_buffering), a
