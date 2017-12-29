@@ -1187,6 +1187,10 @@ ExecCore:
 	ld		(dos_stack_backup), sp
 	ld		hl, (prgstack)
 	ld		sp, hl
+	; Initialise ctrl char handlers
+	ld		hl, 00
+	ld		(ctrl_c_handler), hl
+	ld		(ctrl_z_handler), hl
 	; Turn on UART buffering
 	ld		a, 0xFF
 	ld		(uart_buffering), a
