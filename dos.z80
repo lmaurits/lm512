@@ -27,7 +27,7 @@ DosInit:
 	ld		hl, 0xFFFF
 	ld		(prgstack), hl
 	ld		hl, used_jobs
-	ld		b, 61
+	ld		b, 65
 ZeroLoop:
 	ld		(hl), 0x00
 	inc		hl
@@ -1196,9 +1196,11 @@ ExecCore:
 	push	hl
 	ld	hl, (execaddr)
 	jp	(hl)
+
 ExecTerminateAddress:
-	ld		a, (active_job)
-	call		ClearProcTable
+	; Call Ctrl-C handler
+	ld		hl, (ctrl_c_handler)
+	call		CallIfNotZero
 	jr		ExecReturnAddress
 
 ExecAbort:
@@ -1224,10 +1226,13 @@ ExecSuspendAddress:
 	exx
 	push		ix
 	push		iy
-	; Backup stack pointer in proc table
+	; Backup stack pointer etc. in proc table
 	ld		a, (active_job)
 	ld              (last_susp_job), a
 	call		UpdateProcTable
+	; Call Ctrl-Z handler
+	ld		hl, (ctrl_z_handler)
+	call		CallIfNotZero
 	; Output "stopped" message
 	ld		hl, StoppedStr
 	call		PrintStringA
@@ -1238,7 +1243,12 @@ ExecSuspendAddress:
 	call 		TerminateLine
 	ld		hl, message_buffer
 	call		PrintStringA
+	jr		ReturnToDos
 ExecReturnAddress:
+	;		Remove process from proc table
+	ld		a, (active_job)
+	call		ClearProcTable
+ReturnToDos:
 	; Restore DOS bank and stack
 	ld		sp, (dos_stack_backup)
 	ld		a, 1
@@ -1253,6 +1263,11 @@ ExecReturnAddress:
 StoppedStr:
 	defm		"Stopped job \0"
 
+CallIfNotZero:
+	ld		a, h
+	or		l
+	ret		z
+	jp		(hl)
 
 SetProcTablePointer:
 	ld		ix, proc_table	; Start of proc_table
@@ -1277,10 +1292,10 @@ UpdateProcTable:
 	ld		(ix+1), l
 	ld		(ix+2), h
 	; Do callback stuff here later
-	ld		hl, 0x0000
+	ld		hl, (ctrl_c_handler)
 	ld		(ix+3), l
 	ld		(ix+4), h
-	ld		hl, 0x0000
+	ld		hl, (ctrl_z_handler)
 	ld		(ix+5), l
 	ld		(ix+6), h
 	ret
@@ -1298,9 +1313,7 @@ ClearProcTableLoop1:
 	djnz		ClearProcTableLoop1
 ClearProcTable0:
 	ld		a, (used_jobs)	; Get used_jobs
-	rst		0x30
 	and		c		; Turn off our bit
-	rst		0x30
 	ld		(used_jobs), a	; Set used_jobs
 	pop		af		; Get our job ID back
 	call		SetProcTablePointer
