@@ -27,11 +27,13 @@ DosInit:
 	ld		hl, 0xFFFF
 	ld		(prgstack), hl
 	ld		hl, used_jobs
-	ld		b, 65
+	ld		b, 74
 ZeroLoop:
 	ld		(hl), 0x00
 	inc		hl
 	djnz		ZeroLoop
+	ld		hl, suspend_stack-1
+	ld		(suspend_stack_pointer), hl
 	; Setup UART buffering
 	ld		a, 0x00
 	ld		(uart_buffering), a
@@ -1228,7 +1230,7 @@ ExecSuspendAddress:
 	push		iy
 	; Backup stack pointer etc. in proc table
 	ld		a, (active_job)
-	ld              (last_susp_job), a
+	call		SuspendStackPush
 	call		UpdateProcTable
 	; Call Ctrl-Z handler
 	ld		hl, (ctrl_z_handler)
@@ -1236,9 +1238,9 @@ ExecSuspendAddress:
 	; Output "stopped" message
 	ld		hl, StoppedStr
 	call		PrintStringA
-	ld		hl, message_buffer
-	ld              a, (last_susp_job)
+	ld		a, (active_job)
 	inc		a
+	ld		hl, message_buffer
 	call		StrfHex
 	call 		TerminateLine
 	ld		hl, message_buffer
@@ -1399,7 +1401,9 @@ FgValidate:
 	dec		a
 	jr		FgCore
 FgMostRecent:
-	ld		a, (last_susp_job)
+	call		SuspendStackPop
+	cp		0xFF
+	jr		z, FgNoJob
 FgCore:
 	; TODO check job exists
 	ld		(active_job), a
@@ -1437,6 +1441,26 @@ FgNoJob:
 	ret
 NoJobStr:
 	defm		"No job\r\n\0"
+
+SuspendStackPush:
+	ld		hl, suspend_stack_pointer
+	inc		(hl)
+	ld		hl, (suspend_stack_pointer)
+	ld		(hl), a
+	ret
+
+SuspendStackPop:
+	ld		a, (used_jobs)
+	cp		0
+	jr		z, SuspendStackEmpty
+	ld		hl, (suspend_stack_pointer)
+	ld		a, (hl)
+	ld		hl, suspend_stack_pointer
+	dec		(hl)
+	ret
+SuspendStackEmpty:
+	ld		a, 0xFF
+	ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;

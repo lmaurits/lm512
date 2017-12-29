@@ -60,7 +60,8 @@ total_size:		defs 4
 used_jobs:		defs 1
 proc_table:		defs 58
 active_job:		defs 1
-last_susp_job:		defs 1
+suspend_stack:		defs 8
+suspend_stack_pointer:	defs 2
 ctrl_c_handler:		defs 2
 ctrl_z_handler:		defs 2
 ;; Command line stuff
