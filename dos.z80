@@ -27,7 +27,7 @@ DosInit:
 	ld		hl, 0xFFFF
 	ld		(prgstack), hl
 	ld		hl, used_jobs
-	ld		b, 74
+	ld		b, 18+8*proc_table_entry_size
 ZeroLoop:
 	ld		(hl), 0x00
 	inc		hl
@@ -1300,7 +1300,7 @@ SetProcTablePointer:
 	ld		ix, proc_table	; Start of proc_table
 	cp		0		; Return immediately for job 0
 	ret		z
-	ld		de, 07		; Size of entry
+	ld		de, proc_table_entry_size
 	ld		b, a		; Proc ID into A
 SetProcTablePointerLoop:
 	add		ix, de
@@ -1326,6 +1326,8 @@ UpdateProcTable:
 	ld		hl, (ctrl_z_handler)
 	ld		(ix+5), l
 	ld		(ix+6), h
+	ld		a, (alarm_countdown)
+	ld		(ix+7), a
 	ret
 
 ClearProcTable:
@@ -1449,6 +1451,9 @@ FgCore:
 	ld		l, (ix+5)
 	ld		h, (ix+6)
 	ld		(ctrl_z_handler), hl
+	; Setup sleep alarm
+	ld		a, (ix+7)
+	ld		(alarm_countdown), a
 	; Renable UART buffering
 	ld		a, 0xFF
 	ld		(uart_buffering), a
