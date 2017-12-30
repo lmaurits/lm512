@@ -1569,12 +1569,7 @@ Uptime:
 	ld		c, (hl)
 	inc		hl
 	ld		b, (hl)
-	inc		hl
-	ld		a, (hl)
-	ld		ixl, a
-	inc		hl
-	ld		a, (hl)
-	ld		ixh, a
+	ld		ix, (uptime+6)
 	pop		hl
 	call		B2D64
 	call		PrintStringA
