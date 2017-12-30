@@ -41,6 +41,7 @@ uart_buffer_pointer:	defs 2
 uart_buffer_size:	defs 1
 
 ;; Sys variables
+SYSPAGE:
 execaddr:		defs 2
 fileaddr:		defs 2
 sysstack:		defs 2

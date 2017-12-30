@@ -173,6 +173,10 @@ ReadCharWait:
 	halt
 	jr		ReadCharReenter
 
+GetSysMemPtr:
+	ld		ix, SYSPAGE
+	ret
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
 ; DOS COMMANDS
@@ -1283,6 +1287,13 @@ ReturnToDos:
 ; PROCESS TABLE STUFF
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+RegisterCtrlHandlers:
+	di
+	ld		(ctrl_c_handler), hl
+	ld		(ctrl_z_handler), de
+	ei
+	ret
 
 SetProcTablePointer:
 	; Set IX to the Ath entry in the process table
