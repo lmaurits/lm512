@@ -7,8 +7,8 @@
 Monitor:
 	; Backup stack pointer
 	ld		(mon_stack_backup), SP
+	ld		sp, mon_stack
 	; Save all registers
-	ld		sp, mon_reg_stack+1
 	push		af
 	push		bc
 	push		de
@@ -23,8 +23,6 @@ Monitor:
 	exx
 	push		ix
 	push		iy
-	; Restore original stack pointer
-	ld		SP, (mon_stack_backup)
 MonitorStart:
 	ld		hl, monwelcomestr
 	call		PrintStringA
@@ -43,10 +41,6 @@ MonitorLoop:
 	call		MonitorHandleLine
 	jr		MonitorLoop
 MonitorExit:
-	; Backup stack pointer
-	ld		(mon_stack_backup), SP
-	; Restore all registers
-	ld		sp, mon_reg_stack-19
 	pop		iy
 	pop		ix
 	ex		af, af'
@@ -96,6 +90,8 @@ memedstr:	defm "MEMED\0"
 regstr:		defm "REGISTERS\0"
 stackstr:	defm "STACK\0"
 outstr:		defm "OUT\0"
+pushstr:	defm "PUSH\0"
+popstr:		defm "POP\0"
 nullstr:	defm "\0"
 
 ; Table linking command strings to function entry points
@@ -111,6 +107,8 @@ mon_dispatch_table:
 	defw memcpystr, Memcpy
 	defw memedstr, Memed
 	defw outstr, Out
+	defw pushstr, Push
+	defw popstr, Pop
 	defw regstr, Registers
 	defw resetstr, Reset
 	defw stackstr, Stack
@@ -508,7 +506,7 @@ Memed01:
 	call		StrfHex
 	ld		a, e
 	call		StrfHex
-	ld		(hl), " "
+	ld		(hl), "\t"
 	inc		hl
 	ld		a, (de)
 	call		StrfHex
@@ -538,7 +536,7 @@ Memed02:
 Registers:
 	ld		hl, reg_labels
 	call		PrintStringA
-	ld		de, mon_reg_stack
+	ld		de, mon_stack
 	ld		b, 8
 	call		RegisterPrint
 
@@ -616,6 +614,12 @@ StackLoop:
 	push		bc
 	ld		hl, mon_linebuf
 	inc		de
+	ld		a, d
+	call		StrfHex
+	ld		a, e
+	call		StrfHex
+	ld		(hl), "\t"
+	inc		hl
 	ld		a, (de)
 	call		StrfHex
 	dec		de
@@ -637,3 +641,33 @@ What:
 	call PrintStringA
 	ret
 	whatstr: defm "What?\n\r\0"
+
+Push:
+	ld		a, (mon_argc)
+	cp		1
+	jr		z, Push00
+	;; Argc error
+	ld		hl, pushstr
+	jp		OneMemAddressArgcError
+Push00:
+	ld		hl, (mon_argv)
+	call		ValidateAddress
+	ret		nz
+
+	call		Read16bit	; Value to push in BC
+	ld		hl, (mon_stack_backup)	; Get app stack in HL
+	ld		(mon_stack_backup), sp	; Put mon stack in mem
+	ld		sp, hl			; Activate app stack
+	push		bc			; Push
+	jr		PopRestoreStacks
+
+Pop:
+	ld		hl, (mon_stack_backup)	; Get app stack in HL
+	ld		(mon_stack_backup), sp	; Put mon stack in mem
+	ld		sp, hl			; Activate app stack
+	pop		de			; Pop
+PopRestoreStacks:
+	ld		hl, (mon_stack_backup)	; Get mon stack back in HL
+	ld		(mon_stack_backup), sp	; Put new app stack in mem
+	ld		sp, hl			; Reactivate mon stack
+	ret

@@ -23,8 +23,9 @@ START_MON_RAM:
 mon_linebuf:		defs 80
 mon_argc:		defs 1
 mon_argv:		defs 2
-mon_stack_backup:	defs 22
-mon_reg_stack:		defs 2
+defs 40
+mon_stack:		defs 2
+mon_stack_backup:	defs 2
 END_MON_RAM:
 
 ; Stuff for the inbuilt DOS
