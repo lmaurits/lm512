@@ -36,11 +36,12 @@ BufferConsumeLoop:
 	; Read a char from the UART FIFO
 	in	a, (.RHRA)
 	; Check for various special control characters
-	; Jump to handle them if needed
 	cp	0x03		; Ctrl C
 	jr	z, StackHandleCtrlC
 	cp	0x1A		; Ctrl Z
 	jr	z, StackHandleCtrlZ
+	cp	0x18		; Ctrl X
+	jr	z, StackHandleCtrlX
 	; Copy UART char into buffer
 	ld	hl, (uart_buffer_pointer)
 	ld	(hl), a
@@ -52,6 +53,10 @@ BufferConsumeLoop:
 StackHandleCtrlC:
 	; This is a Ctrl-C, terminate current process!
 	ld	hl, HandleCtrlC
+	jr	StackHack
+StackHandleCtrlX:
+	; This is a Ctrl-X, enter debugger
+	ld	hl, Monitor
 	jr	StackHack
 StackHandleCtrlZ:
 	; This is a Ctrl-Z, suspend current process!
