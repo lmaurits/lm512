@@ -74,29 +74,22 @@ StackHack:
 tickhandler_uptime:
 	;;;; Handle tick counter
 	ld	hl, ticks
-	ld	b, 64
-	call	inc_and_check_wrap
+	inc	(hl)
+	ld	a, (hl)
+	cp	64
 	jr	nz, tickhandler_alarm
+	ld	(hl), 0
 
-	;;;; Handle uptime tracking
-	ld	hl, uptime_secs
-	ld	b, 60
-	call	inc_and_check_wrap
+	; Update uptime seconds
+	ld	hl, uptime
+	ld	b, 8
+UptimeLoop:
+	inc	(hl)
+	ld	a, (hl)
+	cp	0
 	jr	nz, tickhandler_alarm
-
-	ld	hl, uptime_mins
-	ld	b, 60
-	call	inc_and_check_wrap
-	jr	nz, tickhandler_alarm
-
-	ld	hl, uptime_hours
-	ld	b, 24
-	call	inc_and_check_wrap
-	jr	nz, tickhandler_alarm
-
-	ld	hl, (uptime_days)
 	inc	hl
-	ld	(uptime_days), hl
+	djnz	UptimeLoop
 
 tickhandler_alarm:
 	ld	a, (alarm_flag)
@@ -122,17 +115,3 @@ tickhandler_end:
 	pop	hl		; Restore AF and HL
 	ei			; Enable interrupts
 	reti
-
-inc_and_check_wrap:
-	; HL - address
-	; B  - wrapping value
-	ld	a, (hl)
-	inc	a
-	cp	b
-	push	af
-	jr	nz, inc_and_check_wrap_store
-	ld	a, 0
-inc_and_check_wrap_store:
-	ld	(hl), a
-	pop	af		; Get back flags from the wrap comp
-	ret

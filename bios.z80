@@ -53,17 +53,21 @@ Main:
 	ld		a, 0
 	ld		(ticks), a
 	ld		(alarm_flag), a
-	ld		(uptime_secs), a
-	ld		(uptime_mins), a
-	ld		(uptime_hours), a
-	ld		hl, 0x0000
-	ld		(uptime_days), hl
+	ld		hl, uptime
+	ld		b, 8
+UptimeZeroLoop:
+	ld		(hl), a
+	inc		hl
+	djnz		UptimeZeroLoop
 	; Initialise hardware
 ;	call		Notify	; Notify(0) turns off both LEDs
 	call		UartInit
-	call		CfSetup
 	call		RTCSetup
 	call		InterruptSetup
+	call		CfSetup
+	; If CfSetup failed, jump to mon
+	cp		0xFF
+	jp		z, Monitor
 	; Start DOS
 	jp		Dos
 

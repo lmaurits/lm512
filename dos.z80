@@ -1556,54 +1556,30 @@ SleepDos00:
 	ret
 
 Uptime:
-	ld		hl, up_string
-	call		PrintStringA
-	ld		hl, (uptime_days)
-	call		B2D16
-	ld		hl, message_buffer
-	push		hl
-	call		AppendB2D
-	ld		(hl), "\0"
-	pop		hl
-	call		PrintStringA
-	ld		hl, days_string
-	call		PrintStringA
-	ld		a, (uptime_hours)
-	call		B2D8
-	call		PadTime
-	ld		hl, message_buffer
-	push		hl
-	call		AppendB2D
-	ld		(hl), ":"
+	ld		hl, uptime
+	ld		c, (hl)
 	inc		hl
-	push		hl
-	ld		a, (uptime_mins)
-	call		B2D8
-	call		PadTime
-	pop		hl
-	call		AppendB2D
-	ld		(hl), ":"
+	ld		b, (hl)
+	push		bc
 	inc		hl
-	push		hl
-	ld		a, (uptime_secs)
-	call		B2D8
-	call		PadTime
+	ld		e, (hl)
+	inc		hl
+	ld		d, (hl)
+	inc		hl
+	ld		c, (hl)
+	inc		hl
+	ld		b, (hl)
+	inc		hl
+	ld		a, (hl)
+	ld		ixl, a
+	inc		hl
+	ld		a, (hl)
+	ld		ixh, a
 	pop		hl
-	call		AppendB2D
-	call		TerminateLine
-	pop		hl
+	call		B2D64
 	call		PrintStringA
-	ret
-up_string:
-	defm		"Up \0"
-days_string:
-	defm		" days, \0"
-
-PadTime:
-	ld		a, c
-	cp		2
-	ret		z
-	dec		hl
-	ld		(hl), "0"
-	inc		c
+	ld	a, "\r"
+	call	SERIAL_WRITE_A
+	ld	a, "\n"
+	call	SERIAL_WRITE_A
 	ret

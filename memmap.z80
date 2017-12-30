@@ -34,10 +34,7 @@ ticks:			defs 1
 alarm_tick:		defs 1
 alarm_countdown:	defs 1
 alarm_flag:		defs 1
-uptime_secs:		defs 1
-uptime_mins:		defs 1
-uptime_hours:		defs 1
-uptime_days:		defs 2
+uptime:			defs 8
 uart_buffering:		defs 1
 uart_buffer:		defs 16
 uart_buffer_pointer:	defs 2
