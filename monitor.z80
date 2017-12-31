@@ -7,7 +7,7 @@
 Monitor:
 	; Backup stack pointer
 	ld		(mon_stack_backup), SP
-	ld		sp, mon_stack
+	ld		sp, mon_stack+1
 	; Save all registers
 	push		af
 	push		bc
