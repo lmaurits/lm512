@@ -195,12 +195,9 @@ Batch:
 	;; Argc error
 	ld		hl, batchstr
 OneFilenameArgcError:
-	call		PrintStringA
-	ld		hl, ExpectsExactlyOneArgStr
-	call		PrintStringA
-	ld		hl, FilenameStr
-	call		PrintStringA
-	ret
+	ld		de, ExpectsExactlyOneArgStr
+	ld		bc, FilenameStr
+	jp		Print3Strings
 BatchValidate:
 	call		ValidateOneExistingFile
 	ret		nz
@@ -657,12 +654,9 @@ SerialLoad:
 	jr		z, SerialLoad00
 	;; Prepare and pring arg error
 	ld		hl, serloadstr
-	call		PrintStringA
-	ld		hl, ExpectsExactlyOneArgStr
-	call		PrintStringA
-	ld		hl, AddressStr
-	call		PrintStringA
-	ret
+	ld		de, ExpectsExactlyOneArgStr
+	ld		bc, AddressStr
+	jp		Print3Strings
 ExpectsExactlyOneArgStr:
 	defm		" expects exactly one arg \0"
 AddressStr:
@@ -737,12 +731,9 @@ Set:
 	jr		z, SetValidate
 	;; Argc error
 	ld		hl, setstr
-	call		PrintStringA
-	ld		hl, ExpectsExactlyTwoArgsStr
-	call		PrintStringA
-	ld		hl, SetArgsStr
-	call		PrintStringA
-	ret
+	ld		de, ExpectsExactlyTwoArgsStr
+	ld		bc, SetArgsStr
+	jp		Print3Strings
 SetValidate:
 	ld		hl, (dos_argv)
 	ld		bc, SetTable
@@ -949,12 +940,9 @@ Mv:
 	;; Argc error
 	ld		hl, mvstr
 TwoFilenamesArgcError:
-	call		PrintStringA
-	ld		hl, ExpectsExactlyTwoArgsStr
-	call		PrintStringA
-	ld		hl, FilenameStr
-	call		PrintStringA
-	ret
+	ld		de, ExpectsExactlyTwoArgsStr
+	ld		bc, FilenameStr
+	jp		Print3Strings
 Mv00:
 	call		ValidateTwoFilesFirstExistsHandleOverwrite
 	ret		nz
@@ -1058,12 +1046,9 @@ DosLoadFile:
 	;; Argc error
 	ld		hl, loadstr
 OneFilenameOptionalAddressArgcError:
-	call		PrintStringA
-	ld		hl, ExpectsOneOrTwoArgStr
-	call		PrintStringA
-	ld		hl, FilenameAddrStr
-	call		PrintStringA
-	ret
+	ld		de, ExpectsOneOrTwoArgStr
+	ld		bc, FilenameAddrStr
+	jp		Print3Strings
 ExpectsOneOrTwoArgStr:
 	defm		" expects one or two args \0"
 FilenameAddrStr:
@@ -1414,12 +1399,9 @@ Fg:
 	jr		z, FgValidate
 	;; Argc error
 	ld		hl, fgstr
-	call		PrintStringA
-	ld		hl, ExpectsExactlyOneArgStr
-	call		PrintStringA
-	ld		hl, JobIdArgsStr
-	call		PrintStringA
-	ret
+	ld		de, ExpectsExactlyOneArgStr
+	ld		bc, JobIdArgsStr
+	jp		Print3Strings
 JobIdArgsStr:
 	defm		"(job ID)\r\n\0"
 FgValidate:
@@ -1553,12 +1535,9 @@ SleepDos:
 	jr		z, SleepDos00
 	;; Argc error
 	ld		hl, sleepstr
-	call		PrintStringA
-	ld		hl, ExpectsExactlyOneArgStr
-	call		PrintStringA
-	ld		hl, SleepArgsStr
-	call		PrintStringA
-	ret
+	ld		de, ExpectsExactlyOneArgStr
+	ld		bc, SleepArgsStr
+	jp		Print3Strings
 SleepArgsStr:
 	defm		"(2 digit hex second count)\r\n\0"
 SleepDos00:

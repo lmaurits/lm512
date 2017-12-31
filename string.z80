@@ -28,6 +28,14 @@ PrintStringA:
 	inc		hl
 	jr		PrintStringA
 
+Print3Strings:
+	call		PrintStringA
+	ex		de, hl
+	call		PrintStringA
+	ld		h, b
+	ld		l, c
+	jr		PrintStringA
+
 ReadLineA:
 	push		hl
 	ld		b, 0

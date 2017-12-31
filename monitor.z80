@@ -128,12 +128,9 @@ Bank:
 	jr		z, BankSet
 	;; Argc error
 	ld		hl, bankstr
-	call		PrintStringA
-	ld		hl, ExpectsExactlyOneArgStr
-	call		PrintStringA
-	ld		hl, BankArgsStr
-	call		PrintStringA
-	ret
+	ld		de, ExpectsExactlyOneArgStr
+	ld		bc, BankArgsStr
+	jp		Print3Strings
 BankArgsStr:
 	defm		"(mem bank).\r\n\0"
 BankGet:
@@ -161,12 +158,9 @@ CfLoad:
 	jr		z, CfLoad00
 	;; Argc error
 	ld		hl, cfloadstr
-	call		PrintStringA
-	ld		hl, ExpectsExactlyThreeArgsStr
-	call		PrintStringA
-	ld		hl, CfLoadArgStr
-	call		PrintStringA
-	ret
+	ld		de, ExpectsExactlyThreeArgsStr
+	ld		bc, CfLoadArgStr
+	jp		Print3Strings
 CfLoad00:
 	; Validate address
 	ld		hl, (mon_argv)
@@ -214,12 +208,9 @@ CfSave:
 	jr		z, CfSave00
 	;; Argc error
 	ld		hl, cfsavestr
-	call		PrintStringA
-	ld		hl, ExpectsExactlyThreeArgsStr
-	call		PrintStringA
-	ld		hl, CfSaveArgStr
-	call		PrintStringA
-	ret
+	ld		de, ExpectsExactlyThreeArgsStr
+	ld		bc, CfSaveArgStr
+	jp		Print3Strings
 CfSave00:
 	; Validate sector
 	ld		hl, (mon_argv)
@@ -276,12 +267,9 @@ Dump:
 	;; Argc error
 	ld		hl, dumpstr
 OneMemAddressArgcError:
-	call		PrintStringA
-	ld		hl, ExpectsExactlyOneArgStr
-	call		PrintStringA
-	ld		hl, AddressStr
-	call		PrintStringA
-	ret
+	ld		de, ExpectsExactlyOneArgStr
+	ld		bc, AddressStr
+	jp		Print3Strings
 Dump00:
 	ld		hl, (mon_argv)
 	call		ValidateAddress
@@ -375,12 +363,9 @@ In:
 	jr		z, In00
 	;; Argc error
 	ld		hl, instr
-	call		PrintStringA
-	ld		hl, ExpectsExactlyOneArgStr
-	call		PrintStringA
-	ld		hl, InArgsStr
-	call		PrintStringA
-	ret
+	ld		de, ExpectsExactlyOneArgStr
+	ld		bc, InArgsStr
+	jp		Print3Strings
 InArgsStr:
 	defm		"(port)\r\n\0"
 In00:
@@ -444,12 +429,9 @@ Memcpy:
 	jr		z, Memcpy00
 	;; Argc error
 	ld		hl, memcpystr
-	call		PrintStringA
-	ld		hl, ExpectsExactlyThreeArgsStr
-	call		PrintStringA
-	ld		hl, MemcpyArgStr
-	call		PrintStringA
-	ret
+	ld		de, ExpectsExactlyThreeArgsStr
+	ld		bc, MemcpyArgStr
+	jp		Print3Strings
 MemcpyArgStr:
 	defm		"(dest address, src address, 4 digit byte count).\r\n\0"
 Memcpy00:
@@ -580,12 +562,9 @@ Out:
 	jr		z, OutValidate
 	;; Argc error
 	ld		hl, outstr
-	call		PrintStringA
-	ld		hl, ExpectsExactlyTwoArgsStr
-	call		PrintStringA
-	ld		hl, OutArgsStr
-	call		PrintStringA
-	ret
+	ld		de, ExpectsExactlyTwoArgsStr
+	ld		bc, OutArgsStr
+	jp		Print3Strings
 OutArgsStr:
 	defm		"(port, value).\r\n\0"
 OutValidate:
