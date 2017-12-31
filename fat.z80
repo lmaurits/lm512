@@ -728,3 +728,39 @@ RenameAbort:
 	pop		de
 	ld		a, 0xff
 	ret
+
+;;;;;;;;;;;;
+
+StatFile:
+	ld	b, a
+	ld	a, h
+	or	l
+	jr	z, StatFileSearch
+	; HL points to a filename, find it
+	call	FindFile
+	ret	nz
+StatFilePopulateResults:
+	call	BuildFilenameString
+	ld	hl, filename_buffer
+	ld	de, (size_in_bytes)
+	ld	bc, (size_in_bytes+2)
+	ld	a, 0
+	ret
+StatFileSearch:
+	ld	a, b
+	cp	0
+	jr	nz, StatFileSearchNext
+	call	ResetRootDir		; Jump to start of root dir
+StatFileSearchLoop:
+	call	TestEndDir
+	jr	z, StatFileEnd
+	call	TestFreeEntry
+	jr	z, StatFileSearchNext
+	call	TestLFN
+	jr	nz, StatFilePopulateResults
+StatFileSearchNext:
+	call	AdvanceDirEnt
+	jr	StatFileSearchLoop
+StatFileEnd:
+	ld	a, 0xFF
+	ret

@@ -15,7 +15,6 @@ include 'fat.z80'
 Dos:
 DosInit:
 	; INITIALISE EVERYTHING
-	
 	; Initialise system variables
 	ld		hl, 0x8000
 	ld		(execaddr), hl
@@ -515,18 +514,53 @@ Ls:
 	ld	(total_size), hl
 	ld	(total_size+2), hl
 
-	call	ResetRootDir		; Jump to start of root dir
-LsLoop:
-	call	TestEndDir
-	jr	z, LsEnd
-	call	TestFreeEntry
-	jr	z, LsNext
-	call	TestLFN
-	jr	z, LsNext
-	call	LsHandleFile
-LsNext:
-	call	AdvanceDirEnt
-	jr	LsLoop
+	ld	a, 0
+	call	StatFile	; Get details of first file
+LsHandleFile:
+	; Stash stat results
+	push	bc
+	push	de
+	push	hl
+
+	; Update total size count
+	ld	hl, (total_size)
+	add	hl, de
+	ld	(total_size), hl
+	ld	hl, (total_size+2)
+	ld	de, 0
+	adc	hl, de
+	ld	(total_size+2), hl
+
+	; Print filename, but first stash length
+	pop	hl
+	call	StrLen
+	ld	c, a
+	call	PrintStringA
+
+	; Print spaces
+	ld	a, 12
+	sub	c
+	call	PrintSpaces
+
+	; Print size
+	pop	hl
+	pop	de
+	call	B2D32
+	call	PrintB2D
+	ld	hl, BytesStr
+	call	PrintStringA
+
+	; Increment file count
+	ld	hl, (file_count)
+	inc	hl
+	ld	(file_count), hl
+
+	; Advance
+	ld	hl, 0x0000
+	ld	a, 1
+	call	StatFile
+	cp	0xFF
+	jr	nz, LsHandleFile
 LsEnd:
 	ld	hl, TotalStr
 	call	PrintStringA
@@ -556,42 +590,6 @@ BytesStr:
 
 PrintB2D:
 	ld	hl, B2DBUF
-	call	PrintStringA
-	ret
-
-LsHandleFile:
-	ld	hl, (file_count)
-	inc	hl
-	ld	(file_count), hl
-
-	ld	hl, (total_size)
-	ld	de, (size_in_bytes)
-	add	hl, de
-	ld	(total_size), hl
-	ld	hl, (total_size+2)
-	ld	de, 0
-	adc	hl, de
-	ld	(total_size+2), hl
-
-	; Print filename
-	call	BuildFilenameString
-	ld	hl, filename_buffer
-	call	StrLen
-	push	af
-	call	PrintStringA
-	pop	bc
-
-	; Print spaces
-	ld	a, 12
-	sub	b
-	call	PrintSpaces
-
-	; Print size
-	ld	hl, (size_in_bytes)
-	ld	de, (size_in_bytes+2)
-	call	B2D32
-	call	PrintB2D
-	ld	hl, BytesStr
 	call	PrintStringA
 	ret
 
