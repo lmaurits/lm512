@@ -493,17 +493,21 @@ SaveRootDir:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ReadFile:
-	; Load the contents of the file corresponding to the current directory entry
-	; into memory at the location pointed to by HL
-	push	hl
+	; Load the contents of file whose name is pointed at by HL
+	; into memory at location DE
+	push	de
 	call	OpenFile
 	pop	hl
+	ret	nz
 ReadFileLoop:
 	call	ReadSector
-	ret	z
-	jr	ReadFileLoop
+	jr	nz, ReadFileLoop
+	ld	bc, (size_in_bytes)
+	ret
 
 OpenFile:
+	call	FindFile
+	ret	nz
 	ld	hl, (starting_cluster)
 	call	SeekCluster
 	ret
@@ -535,14 +539,14 @@ ReadSector:
 ;;;;;;;;;;;;
 
 WriteFile:
-	; Write BC bytes from memory, starting at HL, to disk.
-	; Give filename pointed to by DE.
+	; Write BC bytes from memory, starting at DE, to disk.
+	; Give filename pointed to by HL.
 
 	; First, save params to memory
-	ld	(memory_pointer), hl
+	ld	(memory_pointer), de
 	ld	(total_bytes), bc
 	ld	(bytes_remaining), bc
-	ld	(target_filename_ptr), de
+	ld	(target_filename_ptr), hl
 
 	; Now, find an empty sector to start the chain
 	; and remember it
@@ -675,6 +679,8 @@ FindFileNotFound:
 DeleteFile:
 	; Delete file corresponding to the current directory entry
 	; First, remove the directory entry
+	call	FindFile
+	ret	nz
 	call	MakeAvailEntry
 	call	UpdateRootDir
 	call	SaveRootDir
@@ -709,7 +715,6 @@ RenameFile:
 	; HL points to old name
 	; DE points to new name
 	push		de		; Backup new name pointer
-	ld		(target_filename_ptr), hl
 	call		FindFile
 	jr		nz, RenameAbort
 	; Dent *should* now be pointed at our target

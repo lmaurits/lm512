@@ -83,10 +83,9 @@ DosAutoExec:
 	; IF FOUND, EXECUTE AS BATCH FILE
 
 	ld		hl, DosAutoExecStr
-	ld		(target_filename_ptr), hl
-	call		FindFile
+	call		StatFile
 	ret		nz
-	; Dent *should* now be pointed at our target
+	ld		hl, DosAutoExecStr
 	jp		BatchCallback
 DosAutoExecStr:
 	defm		"AUTOEXEC.BAT\0"
@@ -201,10 +200,8 @@ BatchValidate:
 	call		ValidateOneExistingFile
 	ret		nz
 BatchCallback:
-	; At this point, we've matched
-	; Read the file into memory
-	ld		hl, (fileaddr)
-	push		hl
+	ld		de, (fileaddr)
+	push		de
 	call		ReadFile
 	pop		hl
 	ld		(line_start), hl
@@ -229,14 +226,7 @@ BatchLoop:
 
 ValidateOneExistingFile:
 	ld		hl, (dos_argv)
-	call		ValidateFilename
-	ret		nz
-	ld		(target_filename_ptr), hl
-	call		FindFile
-	ret		z
-	call		BadFileCallback
-	or		1
-	ret
+	jp		ValidateFilename
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -866,10 +856,10 @@ ReceiveValidate:
 	ld		hl, (fileaddr)
 	call		SerialLoadCore
 	;; Now save
-	ld		hl, (fileaddr)
-	push		de
-	pop		bc
-	ld		de, (dos_argv)
+	ld		b, d
+	ld		c, e
+	ld		de, (fileaddr)
+	ld		hl, (dos_argv)
 	call		WriteFile
 	ret
 
@@ -982,8 +972,8 @@ Rm:
 RmValidate:
 	call		ValidateOneExistingFile
 	ret		nz
-	; Dent *should* now be pointed at our target
 	call		DeleteFile
+	jp		nz, BadFileCallback
 	ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1020,11 +1010,11 @@ Cp00:
 	call		ValidateTwoFilesFirstExistsHandleOverwrite
 	ret		nz
 	ld		hl, (dos_argv)
-	call		FindFile
-	call		LoadFileToFileAddr
-	ld		hl, (fileaddr)
-	ld		de, (dos_argv+2)
-	ld		bc, (size_in_bytes)
+	ld		de, (fileaddr)
+	call		ReadFile
+	jr		nz, BadFileCallback
+	ld		hl, (dos_argv+2)
+	ld		de, (fileaddr)
 	call		WriteFile
 	ret
 
@@ -1055,6 +1045,7 @@ LoadValidate:
 	call		ValidateOneExistingFile
 	ret		nz
 	; At this point, we know the file exists
+
 	; and the current dent is pointing at it
 	; If we only got the one argument,
 	; load file to location specified by
@@ -1073,7 +1064,8 @@ LoadValidate:
 	ld		l, c
 	jr		LoadFile
 LoadFileToFileAddr:
-	ld		hl, (fileaddr)
+	ld		hl, (dos_argv)
+	ld		de, (fileaddr)
 	; Dent *should* now be pointed at our target
 	; Read the file into memory
 LoadFile:
@@ -1135,15 +1127,15 @@ ExecValidate:
 	ret		nz
 	; Parse address and store on stack
 	call		Read16bit
-	ld		h, b
-	ld		l, c
+	ld		d, b
+	ld		e, c
 	jr		ExecCore
 ExecFileAtExecAddr:
-	ld		hl, (execaddr)
+	ld		de, (execaddr)
 	; Dent *should* now be pointed at our target
 	; Read the file into memory
 ExecCore:
-	push		hl		; Exe base address
+	push		de		; Exe base address
 	; First check for an available job ID
 	call		FindAvailJobID
 	; If we couldn't find one, bail
@@ -1161,8 +1153,10 @@ ExecCore:
 	ld		(ix+0), a
 	call		SetMemBank
 	; Now read the executable file
-	pop		hl
+	ld		hl, (dos_argv)
+	pop		de
 	call		ReadFile
+	jp		nz, BadFileCallback
 	; Setup stack
 	ld		(dos_stack_backup), sp
 	ld		hl, (prgstack)
@@ -1497,11 +1491,10 @@ Type:
 TypeValidate:
 	call		ValidateOneExistingFile
 	ret		nz
-	; Dent *should* now be pointed at our target
-	ld	hl, (fileaddr)
-	call	ReadFile
-	ld	hl, (fileaddr)
-	ld	de, (size_in_bytes)
+	ld		de, (fileaddr)
+	call		ReadFile
+	ld		hl, (fileaddr)
+	ld		de, (size_in_bytes)
 TypeLoop:
 	ld	a, (hl)
 	cp	0x0A	; newline
