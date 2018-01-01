@@ -201,11 +201,10 @@ BatchValidate:
 	ret		nz
 BatchCallback:
 	ld		de, (fileaddr)
-	push		de
 	call		ReadFile
-	pop		hl
+	jp		nz, BadFileCallback
+	ld		hl, (fileaddr)
 	ld		(line_start), hl
-	ld		bc, (size_in_bytes)
 BatchLoop:
 	ld		a, 0x0A		; Newline
 	cpir
@@ -423,6 +422,7 @@ FlashValidate:
 	call		ValidateOneExistingFile
 	ret		nz
 	;; Check file is not too large
+	ld		hl, (dos_argv)
 	ld		hl, (size_in_bytes+2)	; upper 16 bit
 	ld		a, h
 	or		l
@@ -1012,7 +1012,7 @@ Cp00:
 	ld		hl, (dos_argv)
 	ld		de, (fileaddr)
 	call		ReadFile
-	jr		nz, BadFileCallback
+	jp		nz, BadFileCallback
 	ld		hl, (dos_argv+2)
 	ld		de, (fileaddr)
 	call		WriteFile
@@ -1070,6 +1070,7 @@ LoadFileToFileAddr:
 	; Read the file into memory
 LoadFile:
 	call		ReadFile
+	jp		nz, BadFileCallback
 	ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1080,20 +1081,30 @@ LoadFile:
 
 Default:
 	ld		hl, dos_linebuf
-	ld		(target_filename_ptr), hl
-	call		FindFile
+	call		StatFile
 	jp		nz, BadFileCallback
 	; At this point, we know the file exists
 	; Is this a batch file?
-	ld		hl, extension
+	ld		hl, dos_linebuf
+	push		hl
+	call		StrLen
+	sub		4	; .bat
+	ld		b, a
+DefaultIncLoop:
+	inc		hl
+	djnz		DefaultIncLoop
 	ld		de, BatchExtensionStr
 	call		StrCmp
+	pop		hl
 	; If so, treat it as such
 	jp		z, BatchCallback
 	; If not, treat it as Z80 machine code
-	jr		ExecFileAtExecAddr
+	push		hl
+	ld		de, (execaddr)
+	push		de
+	jr		ExecCore
 BatchExtensionStr:
-	defm		"BAT\0"
+	defm		".BAT\0"
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
@@ -1127,15 +1138,21 @@ ExecValidate:
 	ret		nz
 	; Parse address and store on stack
 	call		Read16bit
-	ld		d, b
-	ld		e, c
+	ld		hl, (dos_argv)
+	push		hl
+	push		bc
 	jr		ExecCore
 ExecFileAtExecAddr:
+	ld		hl, (dos_argv)
+	push		hl
 	ld		de, (execaddr)
+	push		de		; Exe base address
 	; Dent *should* now be pointed at our target
 	; Read the file into memory
 ExecCore:
-	push		de		; Exe base address
+	; ENTER HERE WITH:
+	; - Address to load executable on top of stak
+	; - Pointer to filename immediately below that
 	; First check for an available job ID
 	call		FindAvailJobID
 	; If we couldn't find one, bail
@@ -1153,8 +1170,8 @@ ExecCore:
 	ld		(ix+0), a
 	call		SetMemBank
 	; Now read the executable file
-	ld		hl, (dos_argv)
 	pop		de
+	pop		hl
 	call		ReadFile
 	jp		nz, BadFileCallback
 	; Setup stack
@@ -1179,6 +1196,7 @@ ExecCore:
 	jp		(hl)
 ExecAbort:
 	pop		hl	; Get rid of load address
+	pop		hl	; Get rid of filename
 	ld		hl, ExecAbortStr
 	call		PrintStringA
 	ret
@@ -1493,8 +1511,10 @@ TypeValidate:
 	ret		nz
 	ld		de, (fileaddr)
 	call		ReadFile
+	jp		nz, BadFileCallback
 	ld		hl, (fileaddr)
-	ld		de, (size_in_bytes)
+	ld		d, b
+	ld		e, c
 TypeLoop:
 	ld	a, (hl)
 	cp	0x0A	; newline
