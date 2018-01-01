@@ -1321,7 +1321,7 @@ UpdateProcTable:
 	ld		hl, (ctrl_z_handler)
 	ld		(ix+5), l
 	ld		(ix+6), h
-	ld		a, (alarm_countdown)
+	ld		a, (sleep_countdown)
 	ld		(ix+7), a
 	ret
 
@@ -1445,7 +1445,7 @@ FgCore:
 	ld		(ctrl_z_handler), hl
 	; Setup sleep alarm
 	ld		a, (ix+7)
-	ld		(alarm_countdown), a
+	ld		(sleep_countdown), a
 	; Renable UART buffering
 	ld		a, 0xFF
 	ld		(uart_buffering), a

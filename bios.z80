@@ -52,7 +52,6 @@ Main:
 	; Initialise variables
 	ld		a, 0
 	ld		(ticks), a
-	ld		(alarm_flag), a
 	ld		hl, uptime
 	ld		b, 8
 UptimeZeroLoop:
@@ -113,18 +112,29 @@ IntVector:
 	dw		diskhandler
 
 Sleep:
-	ld		(alarm_countdown), a
+	cp		0
+	jr		z, Microsleep
+	ld		(sleep_countdown), a
 	ld		a, (ticks)
-	ld		(alarm_tick), a
-	ld		a, 0xFF
-	ld		(alarm_flag), a
+	ld		(sleep_tick), a
 SleepLoop:
-	ld		a, (alarm_flag)
+	ld		a, (sleep_countdown)
 	cp		0
 	ret		z
 	halt
 	jr SleepLoop
 
+Microsleep:
+	ld		a, b
+	cp		0
+	ret		z
+	ld		(microsleep_countdown), a
+MicrosleepLoop:
+	ld		a, (microsleep_countdown)
+	cp		0
+	ret		z
+	halt
+	jr MicrosleepLoop
 ;Notify:
 ;	ld		b, a
 ;	bit		0, b

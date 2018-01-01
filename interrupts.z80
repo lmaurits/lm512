@@ -97,21 +97,21 @@ UptimeLoop:
 	djnz	UptimeLoop
 
 tickhandler_alarm:
-	ld	a, (alarm_flag)
-	cp	0xFF
-	jr	nz, tickhandler_end
-	ld	a, (alarm_tick)
+	ld	hl, sleep_countdown
+	ld	a, (hl)
+	jr	z, tickhandler_microsleep
+	ld	a, (sleep_tick)
 	ld	b, a
 	ld	a, (ticks)
 	cp	b
-	jr	nz, tickhandler_end
-	ld	a, (alarm_countdown)
-	dec	a
-	ld	(alarm_countdown), a
-	cp	0
-	jr	nz, tickhandler_end
-	ld	a, 0x00
-	ld	(alarm_flag), a
+	jr	nz, tickhandler_microsleep
+	dec	(hl)
+
+tickhandler_microsleep:
+	ld	hl, microsleep_countdown
+	ld	a, (hl)
+	jr	z, tickhandler_end
+	dec	(hl)
 
 tickhandler_end:
 	in	a, (109)	; Reset RTC int
