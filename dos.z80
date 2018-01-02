@@ -105,6 +105,7 @@ datestr:	defm "DATE\0"
 echostr:	defm "ECHO\0"
 execstr:	defm "EXEC\0"
 fgstr:		defm "FG\0"
+hashstr:	defm "#\0"
 lsstr:		defm "LS\0"
 monstr:		defm "MONITOR\0"
 mvstr:		defm "MV\0"
@@ -129,6 +130,7 @@ dos_dispatch_table:
 	defw execstr, Exec
 	defw echostr, Echo
 	defw lsstr, Ls
+	defw hashstr, Rem
 	defw helpstr, DosHelp
 	defw loadstr, DosLoadFile
 	defw monstr, EnterMonitor
