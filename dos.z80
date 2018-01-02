@@ -105,7 +105,6 @@ datestr:	defm "DATE\0"
 echostr:	defm "ECHO\0"
 execstr:	defm "EXEC\0"
 fgstr:		defm "FG\0"
-flashstr:	defm "FLASH\0"
 lsstr:		defm "LS\0"
 monstr:		defm "MONITOR\0"
 mvstr:		defm "MV\0"
@@ -129,7 +128,6 @@ dos_dispatch_table:
 	defw datestr, Date
 	defw execstr, Exec
 	defw echostr, Echo
-	defw flashstr, Flash
 	defw lsstr, Ls
 	defw helpstr, DosHelp
 	defw loadstr, DosLoadFile
@@ -410,94 +408,6 @@ EchoLoop:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-Flash:
-	ld		a, (dos_argc)
-	cp		1
-	jr		z, FlashValidate
-	;; Argc error
-	ld		hl, flashstr
-	call		OneFilenameArgcError
-	ret
-FlashValidate:
-	call		ValidateOneExistingFile
-	ret		nz
-	;; Check file is not too large
-	ld		hl, (dos_argv)
-	ld		hl, (size_in_bytes+2)	; upper 16 bit
-	ld		a, h
-	or		l
-	cp		0
-	jr		nz, FlashTooLarge
-	ld		bc, (size_in_bytes)	; lower 16 bit
-	ld		hl, 0x2000
-	or	a			; Clear carry flag
-	sbc		hl, bc
-	jr		c, FlashTooLarge
-	;; First, warn the user
-	ld		hl, FlashNotice
-	call		PrintStringA
-	;; Now copy the core of this function into RAM
-	;; where it will not get clobbered
-	ld		hl, FlashRelocatablePayload
-	ld		de, 0x8000	; Ignore FILEADDR, this is terminal!
-	ld		bc, FlashRelocatablePayloadEnd - FlashRelocatablePayload	; Size of payload
-	ldir			; Relocate
-	jp		0x8000		; Do it!
-FlashNotice:
-	defm	"Rewriting firmware.  Good luck!\r\n\0"
-FlashTooLarge:
-	ld		hl, FlashTooLargeStr
-	call		PrintStringA
-	ret
-FlashTooLargeStr:
-	defm	"ROM image too large!\r\n\0"
-
-FlashRelocatablePayload:
-	; NB: This is loaded into RAM at address 0x9000
-	; But the assembler doesn't know this
-	; So ONLY use jr, not jp, below
-	ld		hl, 0x9000
-	ld		(fileaddr), hl
-	call		DosLoadFile	; Get new file in mem
-	; Set BC to byte count
-	ld		bc, (size_in_bytes)
-	; Set HL to location of new file
-	ld		hl, 0x9000
-	; Set DE to destination
-	ld		de, $0000	; DEST in ROM is $0000
-	; Disable interrupts!
-	di
-FlashLoop:
-	ld		b, (hl)		; Get the new byte in B
-	ld		a, (de)		; Get the current byte in A
-	cp		b		; Compare 'em
-	jr		z, delay_loop_end; Don't overwrite needlessly
-	ld		a, b
-	ld		(de), a
-	;;; Hacky delay loop
-	exx
-	ld		de, $071C
-delay_loop:
-	nop
-	dec		de
-	ld		a, d
-	or		e
-	jr		nz, delay_loop
-	exx
-delay_loop_end:
-	;;; Back to copying...
-	inc		hl
-	inc		de
-	dec		bc
-	ld		a, b
-	or		c
-	jr		nz, FlashLoop
-	; Reset when done
-	rst		0x00
-FlashRelocatablePayloadEnd:
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 Ls:
 	ld	hl,0x0000
 	ld	(file_count), hl
@@ -606,7 +516,6 @@ DosHelp:
 	defm "DATE\t\tPrint/set date and time\n\r"
 	defm "ECHO\t\tEcho string\n\r"
 	defm "EXEC\t\tLoad and execute machine code from file\n\r"
-	defm "FLASH\t\tFlash ROM from file\n\r"
 	defm "LOAD\t\tLoad file onto memory\n\r"
 	defm "LS\t\tList directory contents\n\r"
 	defm "MONITOR\t\tEnter resident monitore\n\r"
