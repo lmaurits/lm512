@@ -865,7 +865,7 @@ ReceiveValidate:
 
 HandleOverwrite:
 	;; Check for collisions!
-	call		FindFile
+	call		StatFile
 	jr		z, HandleOverwriteCore
 	cp		a
 	ret
