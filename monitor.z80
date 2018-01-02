@@ -398,6 +398,8 @@ Help:
 	defm "MEMCPY DEST SRC NBYTES: Copy memory\n\r"
 	defm "MEMED ADDR: Edit memory\n\r"
 	defm "OUT PORT VAL: Write byte to I/O port\n\r"
+	defm "POP: Pop from stack\n\r"
+	defm "PUSH VAL: Push to stack\n\r"
 	defm "REGISTERS: Register dump\n\r"
 	defm "STACK: Stack trace\n\r"
 	defm "\0"
