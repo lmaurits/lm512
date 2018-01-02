@@ -81,6 +81,7 @@ HandleCommandLine:
 	; HL - command string pointer
 	; DE - dispatch table pointer
 	; BC - argc/argv structure
+	call		SkipWhitespace
 	call		ConvertToUpper
 	push		de
 	call		ParseLine
