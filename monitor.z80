@@ -27,6 +27,7 @@ MonitorStart:
 	ld		hl, monwelcomestr
 	call		PrintStringA
 	call		Registers
+	call		Stack
 MonitorLoop:
 ; Infinite loop of read, parse, dispatch
 	ld		hl, monpromptstr
