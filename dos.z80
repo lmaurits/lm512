@@ -111,7 +111,7 @@ mvstr:		defm "MV\0"
 serloadstr:	defm "SERLOAD\0"
 receivestr:	defm "RECEIVE\0"
 resetstr:	defm "RESET\0"
-resumestr:	defm "RESUME\0"
+remstr:		defm "REM\0"
 rmstr:		defm "RM\0"
 loadstr:	defm "LOAD\0"
 setstr:		defm "SET\0"
@@ -136,6 +136,7 @@ dos_dispatch_table:
 	defw receivestr, Receive
 	defw resetstr, Reset
 	defw fgstr, Fg
+	defw remstr, Rem
 	defw rmstr, Rm
 	defw serloadstr, SerialLoad
 	defw setstr, Set
@@ -1442,6 +1443,11 @@ TypeNewline:
 	ld	a, "\n"
 	call	SERIAL_WRITE_A
 	jr	TypeIncrement
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+Rem:
+	ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
