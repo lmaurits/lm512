@@ -6,35 +6,55 @@ org		ROMBASE
 di
 jp		Main
 
-defs 4, 0x00	; Align BIOS table 4 bytes into ROMBASE
-
 ; BIOS call table
 
-SERIAL_READ_A:		jp ReadA		; 0x0008
+SERIAL_INIT_A:		jp UartInitA		; 1  0x0004
+defb 0x00	; Padding to line up with RSTs
+SERIAL_READ_A:		jp ReadA		; 2  0x0008 - FAST!
 defb 0x00
-SERIAL_WRITE_A:		jp WriteA
+SERIAL_INIT_B:		jp UartInitB		; 3  0x000C
 defb 0x00
-SERIAL_READ_B:		jp ReadB		; 0x0010
+SERIAL_WRITE_A:		jp WriteA		; 4  0x0010 - FAST!
 defb 0x00
-SERIAL_WRITE_B:		jp WriteB
+RTC_READ:		jp GetRTC		; 5  0x0014
 defb 0x00
-RTC_READ:		jp GetRTC		; 0x0018
+SERIAL_READ_B:		jp ReadB		; 6  0x0018 - FAST!
 defb 0x00
-RTC_WRITE:		jp SetRTC
+RTC_WRITE:		jp SetRTC		; 7  0x001C
 defb 0x00
-CF_READ:		jp CfReadSectors	; 0x0020
+CF_READ:		jp CfReadSectors	; 10 0x0020 - FAST!
 defb 0x00
-CF_WRITE:		jp CfWriteSectors
+BANK:			jp SetMemBank		; 9  0x0024
 defb 0x00
-SERIAL_INIT_A:		jp UartInitA		; 0x0028
+SERIAL_WRITE_B:		jp WriteB		; 8  0x0028 - FAST!
 defb 0x00
-SERIAL_INIT_B:		jp UartInitB
+PERIODIC_ENABLE:	jp EnablePeriodicInt	; 11 0x002C
 defb 0x00
-MONITOR:		jp Monitor		; 0x0030
+MONITOR:		jp Monitor		; 14 0x0030 - FAST!
 defb 0x00
-BANK:			jp SetMemBank
+PERIODIC_DISABLE:	jp DisablePeriodicInt	; 13 0x0034
 defb 0x00
-defm 0x00, 0x00, 0x00				; 0x0038 reserved for int
+CF_WRITE:		jp CfWriteSectors	; 12 0x0038 - FAST!
+USER_NOTIFY:		jp 0x000		; 15
+SOMETHING:		jp 0x000		; 16
+
+; DOS call table
+
+DOS_READ_CHAR:		jp ReadChar		; 1
+DOS_WRITE_CHAR:		jp WriteA		; 2
+DOS_STAT_FILE:		jp StatFile		; 3
+DOS_READ_FILE:		jp ReadFile		; 4
+DOS_WRITE_FILE:		jp WriteFile		; 5
+DOS_APPEND_FILE:	jp OpenFile		; 6
+DOS_DEL_FILE:		jp DeleteFile		; 7
+DOS_RENAME_FILE:	jp RenameFile		; 8
+DOS_COPY_FILE:		jp ReadSector		; 9
+DOS_SLEEP:		jp Sleep		; 10
+DOS_EXEC_PRG:		jp 0x0000		; 11
+DOS_REG_CTRL:		jp RegisterCtrlHandlers	; 12
+DOS_TERM_PRG:		jp TerminateProcess	; 13
+DOS_EXEC_CMD:		jp DosHandleLine	; 14
+DOS_GET_MEM:		jp GetSysMemPtr		; 15
 
 ; Code generating includes
 
