@@ -106,6 +106,7 @@ echostr:	defm "ECHO\0"
 execstr:	defm "EXEC\0"
 fgstr:		defm "FG\0"
 hashstr:	defm "#\0"
+intstr:		defm "INT\0"
 lsstr:		defm "LS\0"
 monstr:		defm "MONITOR\0"
 mvstr:		defm "MV\0"
@@ -129,6 +130,7 @@ dos_dispatch_table:
 	defw datestr, Date
 	defw execstr, Exec
 	defw echostr, Echo
+	defw intstr, Int
 	defw lsstr, Ls
 	defw hashstr, Rem
 	defw helpstr, DosHelp
@@ -674,28 +676,12 @@ sysstackstr:
 	defm		"SYSSTACK\0"
 prgstackstr:
 	defm		"PRGSTACK\0"
-int1str:defm		"INT1\0"
-int2str:defm		"INT2\0"
-int3str:defm		"INT3\0"
-int4str:defm		"INT4\0"
-int5str:defm		"INT5\0"
-int6str:defm		"INT6\0"
-int7str:defm		"INT7\0"
-int8str:defm		"INT8\0"
 
 SetTable:
 	defw execaddrstr, execaddr
 	defw fileaddrstr, fileaddr
 	defw sysstackstr, sysstack
 	defw prgstackstr, prgstack
-	defw int1str, int_vector
-	defw int2str, int_vector+2
-	defw int3str, int_vector+4
-	defw int4str, int_vector+6
-	defw int5str, int_vector+8
-	defw int6str, int_vector+10
-	defw int7str, int_vector+12
-	defw int8str, int_vector+14
 	defw nullstr, 0x0000
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1450,6 +1436,72 @@ TypeNewline:
 
 Rem:
 	ret
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+Int:
+	ld		a, (dos_argc)
+	cp		1
+	jr		z, IntGet
+	cp		2
+	jr		z, IntGet
+	;; Argc error
+	ld		hl, intstr
+	ld		de, ExpectsOneOrTwoArgStr
+	ld		bc, IntArgsStr
+	jp		Print3Strings
+IntGet:
+	ld		hl, (dos_argv)
+	call		ValidateValue
+	ret		nz
+	call		Read8bit
+	add		a	; multiply by 2 (address are 2 bytes)
+	ld		l, a	; Low order byte from user
+	ld		a, i
+	ld		h, a	; Higher order byte from A
+	ld		a, (dos_argc)
+	cp		2
+	jr		z, IntSet
+	ld		b, (hl)
+	inc		hl
+	ld		a, (hl)
+	ld		hl, message_buffer
+	push		hl
+	call		StrfHex
+	ld		a, b
+	call		StrfHex
+	call		TerminateLine
+	pop		hl
+	jp		PrintStringA
+IntSet:
+	push		hl
+	ld		hl, (dos_argv+2)
+	ld		de, NullStr
+	call		StrictStrCmp
+	pop		de
+	jr		z, IntSetNull
+	ld		hl, (dos_argv+2)
+	call		ValidateAddress
+	ret		nz
+	push		de
+	call		Read16bit	; Read address into BC
+	pop		hl
+IntSetCore:
+	di
+	ld		(hl), c
+	inc		hl
+	ld		(hl), b
+	ei
+	ret
+IntSetNull:
+	ld		h, d
+	ld		l, e
+	ld		bc, nullhandler
+	jr		IntSetCore
+IntArgsStr:
+	defm		"(int and address)\r\n\0"
+NullStr:
+	defm		"NULL\0"
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
