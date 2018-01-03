@@ -132,6 +132,7 @@ size_in_bytes:		defs 4
 
 
 ; File loading stuff ;;;;;;;;;;;;;;
+fat_dirty:		defs 1
 current_cluster:	defs 2
 memory_pointer:		defs 2
 bytes_remaining:	defs 2

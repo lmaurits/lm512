@@ -1,4 +1,6 @@
 InitFAT:
+	ld	a, 0
+	ld	(fat_dirty), a
 ReadMBR:
 	; The MBR is the first sector of the disk.
 	ld	hl, fat_sector_buffer
@@ -83,6 +85,8 @@ ClusterToSector:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ResetFat:
+	; First save any pending changes
+	call	SaveFat
 	; Read first sector of FAT off disk
 	ld	hl, fat_buffer
 	ld	bc, (start_of_fat)
@@ -124,6 +128,8 @@ AdvanceCluster:
 
 	ret
 AdvanceCluster_ReadNewSector:
+	; First save any pending changes
+	call	SaveFat
 	;; Read new sector
 	ld	hl, fat_buffer
 	ld	bc, (fat_sector)
@@ -176,7 +182,9 @@ ChainClusters:
 	ld	(hl), e			; Write DE (littleendian)
 	inc	hl
 	ld	(hl), d
-	call	SaveFat			; Save  changes to disk
+	; Mark FAT dirty
+	ld	a, 0xFF
+	ld	(fat_dirty), a
 	pop	hl			; Get back to where we were
 	call	SeekCluster
 	ret
@@ -188,7 +196,9 @@ TerminateChain:
 	ld	(hl), 0xF8		; Write 0xFFF8 (EOF)
 	inc	hl
 	ld	(hl), 0xFF
-	call	SaveFat			; Save  changes to disk
+	; Mark FAT dirty
+	ld	a, 0xFF
+	ld	(fat_dirty), a
 	ret
 
 ;;;;;;;;;;;;
@@ -214,6 +224,8 @@ SeekCluster:
 	or	l
 	jr	z, SeekClusterBufferUpToDate
 
+	; First save any pending changes
+	call	SaveFat
 	ld	b, d			; Setup registers for CF_READ
 	ld	c, e
 	ld	de, 0
@@ -270,11 +282,22 @@ FollowClusterChain:
 ;;;;;;;;;;;;
 
 SaveFat:
+	ld	a, (fat_dirty)
+	cp	0
+	ret	z
+	push	hl
+	push	bc
+	push	de
 	ld	hl, fat_buffer
 	ld	bc, (fat_sector)
 	ld	de, 0
 	ld	a, 1
 	call	CF_WRITE
+	ld	a, 0
+	ld	(fat_dirty), a
+	pop	de
+	pop	bc
+	pop	hl
 	ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -713,7 +736,9 @@ RmLoop:
 	ld	(hl), a
 	inc	hl
 	ld	(hl), a
-	call	SaveFat
+	; Mark FAT dirty
+	ld	a, 0xFF
+	ld	(fat_dirty), a
 	;; Get next cluster back in HL
 	pop	hl
 	pop	AF			; Restore results of EOF test
