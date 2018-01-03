@@ -57,16 +57,7 @@ line_end:		defs 2
 file_count:		defs 2
 total_size:		defs 4
 
-proc_table_entry_size:	equ 10
-; Process table
-used_jobs:		defs 1
-proc_table:		defs 8*proc_table_entry_size
-active_job:		defs 1
-suspend_stack:		defs 8
-suspend_stack_pointer:	defs 2
 ctrl_c_handler:		defs 2
-ctrl_z_handler:		defs 2
-resume_handler:		defs 2
 ;; Command line stuff
 dos_linebuf:		defs 80
 dos_argc:		defs 1

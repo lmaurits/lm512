@@ -38,8 +38,6 @@ BufferConsumeLoop:
 	; Check for various special control characters
 	cp	0x03		; Ctrl C
 	jr	z, StackHandleCtrlC
-	cp	0x1A		; Ctrl Z
-	jr	z, StackHandleCtrlZ
 	cp	0x18		; Ctrl X
 	jr	z, StackHandleCtrlX
 	cp	0x10		; Ctrl P
@@ -64,10 +62,6 @@ StackHandleCtrlC:
 StackHandleCtrlX:
 	; This is a Ctrl-X, enter debugger
 	ld	hl, Monitor
-	jr	StackHack
-StackHandleCtrlZ:
-	; This is a Ctrl-Z, suspend current process!
-	ld	hl, HandleCtrlZ
 StackHack:
 	; Hack the return address
 	pop	af

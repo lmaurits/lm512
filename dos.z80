@@ -25,14 +25,6 @@ DosInit:
 	ld		sp, hl
 	ld		hl, 0xFFFF
 	ld		(prgstack), hl
-	ld		hl, used_jobs
-	ld		b, 18+8*proc_table_entry_size
-ZeroLoop:
-	ld		(hl), 0x00
-	inc		hl
-	djnz		ZeroLoop
-	ld		hl, suspend_stack-1
-	ld		(suspend_stack_pointer), hl
 	; Setup UART buffering
 	ld		a, 0x00
 	ld		(uart_pause), a
@@ -105,7 +97,6 @@ cpstr:		defm "CP\0"
 datestr:	defm "DATE\0"
 echostr:	defm "ECHO\0"
 execstr:	defm "EXEC\0"
-fgstr:		defm "FG\0"
 hashstr:	defm "#\0"
 intstr:		defm "INT\0"
 lsstr:		defm "LS\0"
@@ -140,7 +131,6 @@ dos_dispatch_table:
 	defw mvstr, Mv
 	defw receivestr, Receive
 	defw resetstr, Reset
-	defw fgstr, Fg
 	defw remstr, Rem
 	defw rmstr, Rm
 	defw serloadstr, SerialLoad
@@ -534,7 +524,6 @@ DosHelp:
 	defm "CP\t\tCopy file\n\r"
 	defm "DATE\t\tPrint/set date and time\n\r"
 	defm "ECHO\t\tEcho string\n\r"
-	defm "FG\t\tResume suspended program\n\r"
 	defm "EXEC\t\tLoad and execute machine code from file\n\r"
 	defm "INT\t\tManage interrupts\n\r"
 	defm "LOAD\t\tLoad file onto memory\n\r"
@@ -1067,23 +1056,6 @@ ExecCore:
 	; ENTER HERE WITH:
 	; - Address to load executable on top of stak
 	; - Pointer to filename immediately below that
-	; First check for an available job ID
-	call		FindAvailJobID
-	; If we couldn't find one, bail
-	cp		0xFF
-	jr		z, ExecAbort
-	; Store our ID, find our point in the table
-	ld		(active_job), a
-	call		SetProcTablePointer
-	; Now check for an available memory bank
-	call		FindAvailBank
-	; If we couldn't find one, bail
-	cp		0xFF
-	jr		z, ExecAbort
-	; Store our bank and switch to it
-	ld		(ix+0), a
-	call		SetMemBank
-	; Now read the executable file
 	pop		de
 	pop		hl
 	call		ReadFile
@@ -1095,8 +1067,6 @@ ExecCore:
 	; Initialise ctrl char handlers
 	ld		hl, 00
 	ld		(ctrl_c_handler), hl
-	ld		(ctrl_z_handler), hl
-	ld		(resume_handler), hl
 	; Turn on UART buffering
 	ld		a, 0xFF
 	ld		(uart_buffering), a
@@ -1109,15 +1079,6 @@ ExecCore:
 	push		hl
 	ld		hl, (execaddr)
 	jp		(hl)
-ExecAbort:
-	pop		hl	; Get rid of load address
-	pop		hl	; Get rid of filename
-	ld		hl, ExecAbortStr
-	call		PrintStringA
-	ret
-ExecAbortStr:
-	defm		"No Job IDs/mem banks! :(\r\n\0"
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
@@ -1137,53 +1098,10 @@ HandleCtrlC:
 	call		CallIfNotZero
 	jr		TerminateProcess
 
-HandleCtrlZ:
-	; Save all registers
-	push		af
-	push		bc
-	push		de
-	push		hl
-	ex		af, af'
-	exx
-	push		af
-	push		bc
-	push		de
-	push		hl
-	ex		af, af'
-	exx
-	push		ix
-	push		iy
-	; Call Ctrl-Z handler
-	ld		hl, (ctrl_z_handler)
-	call		CallIfNotZero
-	; Backup stack pointer etc. in proc table
-	ld		a, (active_job)
-	call		SuspendStackPush
-	call		UpdateProcTable
-	; Output "stopped" message
-	ld		hl, StoppedStr
-	call		PrintStringA
-	ld		a, (active_job)
-	inc		a
-	ld		hl, message_buffer
-	push		hl
-	call		StrfHex
-	call 		TerminateLine
-	pop		hl
-	call		PrintStringA
-	jr		ReturnToDos
-StoppedStr:
-	defm		"Stopped job \0"
-
 TerminateProcess:
-	;		Remove process from proc table
-	ld		a, (active_job)
-	call		ClearProcTable
 ReturnToDos:
 	; Restore DOS bank and stack
 	ld		sp, (dos_stack_backup)
-	ld		a, 1
-	call		SetMemBank
 	; Turn off UART buffering
 	ld		a, 0x00
 	ld		(uart_buffering), a
@@ -1192,229 +1110,10 @@ ReturnToDos:
 ;	call		Notify
 	ret
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;
-; PROCESS TABLE STUFF
-;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 RegisterCtrlHandlers:
 	di
 	ld		(ctrl_c_handler), hl
-	ld		(ctrl_z_handler), de
-	ld		(resume_handler), bc
 	ei
-	ret
-
-SetProcTablePointer:
-	; Set IX to the Ath entry in the process table
-	ld		ix, proc_table	; Start of proc_table
-	cp		0		; Return immediately for job 0
-	ret		z
-	ld		de, proc_table_entry_size
-	ld		b, a		; Proc ID into A
-SetProcTablePointerLoop:
-	add		ix, de
-	djnz		SetProcTablePointerLoop
-	ret
-
-UpdateProcTable:
-	; Write details of process A to proc table
-	call		SetProcTablePointer
-	call		GetMemBank
-	ld		(ix+0), a
-	; Furious Zilogian thrashing to get HL=SP!
-	pop		bc ; get rid of ret add
-	ld		(dos_resume_stack_ptr), sp
-	push		bc ; put ret add back
-	ld		hl, (dos_resume_stack_ptr)
-	ld		(ix+1), l
-	ld		(ix+2), h
-	; Do callback stuff here later
-	ld		hl, (ctrl_c_handler)
-	ld		(ix+3), l
-	ld		(ix+4), h
-	ld		hl, (ctrl_z_handler)
-	ld		(ix+5), l
-	ld		(ix+6), h
-	ld		hl, (resume_handler)
-	ld		(ix+7), l
-	ld		(ix+8), h
-	ld		a, (sleep_countdown)
-	ld		(ix+9), a
-	ret
-
-ClearProcTable:
-	; Remove Job ID in A from used_jobs and proc_table
-	push		af
-	ld		c, 11111110b	; AND used_jobs with this to clear job ID 0
-	cp		0		; If we are Job ID 0, this is all
-	jr		z, ClearProcTable0
-	ld		b, a		; If not, we need to rotate C to the left A times
-ClearProcTableLoop1:
-	rlc		c
-	djnz		ClearProcTableLoop1
-ClearProcTable0:
-	; Turn of our bit in the used_jobs byte
-	ld		a, (used_jobs)	; Get used_jobs
-	and		c		; Turn off our bit
-	ld		(used_jobs), a	; Set used_jobs
-	pop		af		; Get our job ID back
-	; Now clear the proce table
-	call		SetProcTablePointer
-	ld		a, 00
-	ld		b, proc_table_entry_size
-ClearProcTableLoop:
-	ld		(ix+0), a
-	inc		ix
-	djnz		ClearProcTableLoop
-	ret
-
-FindAvailJobID:
-	ld		a, (used_jobs)
-	; Are all jobs full?  If so return A=FF
-	cp		0xFF
-	ret		z
-	; Start the bitwise search
-	ld		c, a	; Indicator byte
-	ld		a, 0	; Job ID under consideration
-	ld		b, 1	; Mask to update indicator
-FindAvailJobIDLoop:
-	bit		0, c	; Is bit 0 set?
-	jr		z, FindAvailJobIDClaim	; If not, claim it
-	inc		a	; Check next ID
-	srl		c	; Rotate DOWN the indicator byte
-	sla		b	; Rotate UP the update mask
-	jr		FindAvailJobIDLoop
-FindAvailJobIDClaim:
-	ld		c, a
-	ld		a, (used_jobs)
-	or		b, 
-	ld		(used_jobs), a
-	ld		a, c
-	ret
-
-FindAvailBank:
-	; For now let's be super hacky and assume Job ID n
-	; always gets bank n+2
-	inc		a
-	inc		a
-	ret
-;FindBankLoop:
-;ld		a, (hl)
-;inc		hl
-;or		(hl)
-;inc		hl
-;cp		0
-;jr		z, FindBankFound
-;inc		b
-;jr		FindBankLoop
-;indBankFound:
-;ld		a, b
-;call		SetMemBank
-;ret
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;
-; FG
-;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-Fg:
-	ld		a, (dos_argc)
-	cp		0
-	jr		z, FgMostRecent
-	cp		1
-	jr		z, FgValidate
-	;; Argc error
-	ld		hl, fgstr
-	ld		de, ExpectsExactlyOneArgStr
-	ld		bc, JobIdArgsStr
-	jp		Print3Strings
-JobIdArgsStr:
-	defm		"(job ID)\r\n\0"
-FgValidate:
-	ld		hl, (dos_argv)
-	call		ValidateValue
-	ret		nz
-	call		Read8bit
-	dec		a
-	jr		FgCore
-FgMostRecent:
-	call		SuspendStackPop
-	cp		0xFF
-	jr		z, FgNoJob
-FgCore:
-	; TODO check job exists
-	ld		(active_job), a
-	call		SetProcTablePointer
-	; Switch to correct bank
-	ld		a, (ix+0)
-	call		SetMemBank
-	; Set up stack, more Zilog thrashing
-	ld		l, (ix+1)
-	ld		h, (ix+2)
-	ld		sp, hl
-	; Set up control char handlers
-	ld		l, (ix+3)
-	ld		h, (ix+4)
-	ld		(ctrl_c_handler), hl
-	ld		l, (ix+5)
-	ld		h, (ix+6)
-	ld		(ctrl_z_handler), hl
-	ld		l, (ix+7)
-	ld		h, (ix+8)
-	ld		(resume_handler), hl
-	; Setup sleep alarm
-	ld		a, (ix+9)
-	ld		(sleep_countdown), a
-	; Renable UART buffering
-	ld		a, 0xFF
-	ld		(uart_buffering), a
-	; Call resume handler
-	call		CallIfNotZero
-	; Restore registers
-	pop		iy
-	pop		ix
-	ex		af, af'
-	exx
-	pop		hl
-	pop		de
-	pop		bc
-	pop		af
-	ex		af, af'
-	exx
-	pop		hl
-	pop		de
-	pop		bc
-	pop		af
-	; Resume execution!
-	ret
-FgNoJob:
-	ld		hl, NoJobStr
-	call		PrintStringA
-	ret
-NoJobStr:
-	defm		"No job\r\n\0"
-
-SuspendStackPush:
-	ld		hl, suspend_stack_pointer
-	inc		(hl)
-	ld		hl, (suspend_stack_pointer)
-	ld		(hl), a
-	ret
-
-SuspendStackPop:
-	ld		a, (used_jobs)
-	cp		0
-	jr		z, SuspendStackEmpty
-	ld		hl, (suspend_stack_pointer)
-	ld		a, (hl)
-	ld		hl, suspend_stack_pointer
-	dec		(hl)
-	ret
-SuspendStackEmpty:
-	ld		a, 0xFF
 	ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
