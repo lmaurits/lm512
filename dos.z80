@@ -1082,6 +1082,7 @@ ExecCore:
 	ld		hl, 00
 	ld		(ctrl_c_handler), hl
 	ld		(ctrl_z_handler), hl
+	ld		(resume_handler), hl
 	; Turn on UART buffering
 	ld		a, 0xFF
 	ld		(uart_buffering), a
@@ -1187,6 +1188,7 @@ RegisterCtrlHandlers:
 	di
 	ld		(ctrl_c_handler), hl
 	ld		(ctrl_z_handler), de
+	ld		(resume_handler), bc
 	ei
 	ret
 
@@ -1221,8 +1223,11 @@ UpdateProcTable:
 	ld		hl, (ctrl_z_handler)
 	ld		(ix+5), l
 	ld		(ix+6), h
+	ld		hl, (resume_handler)
+	ld		(ix+7), l
+	ld		(ix+8), h
 	ld		a, (sleep_countdown)
-	ld		(ix+7), a
+	ld		(ix+9), a
 	ret
 
 ClearProcTable:
@@ -1244,7 +1249,7 @@ ClearProcTable0:
 	; Now clear the proce table
 	call		SetProcTablePointer
 	ld		a, 00
-	ld		b, 7
+	ld		b, proc_table_entry_size
 ClearProcTableLoop:
 	ld		(ix+0), a
 	inc		ix
@@ -1343,12 +1348,17 @@ FgCore:
 	ld		l, (ix+5)
 	ld		h, (ix+6)
 	ld		(ctrl_z_handler), hl
+	ld		l, (ix+7)
+	ld		h, (ix+8)
+	ld		(resume_handler), hl
 	; Setup sleep alarm
-	ld		a, (ix+7)
+	ld		a, (ix+9)
 	ld		(sleep_countdown), a
 	; Renable UART buffering
 	ld		a, 0xFF
 	ld		(uart_buffering), a
+	; Call resume handler
+	call		CallIfNotZero
 	; Restore registers
 	pop		iy
 	pop		ix
