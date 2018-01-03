@@ -135,7 +135,6 @@ dos_dispatch_table:
 	defw rmstr, Rm
 	defw serloadstr, SerialLoad
 	defw setstr, Set
-	defw showstr, Show
 	defw sleepstr, SleepDos
 	defw typestr, Type
 	defw uptimestr, Uptime
@@ -534,8 +533,7 @@ DosHelp:
 	defm "RESET\t\tReset system\n\r"
 	defm "RM\t\tremove file\n\r"
 	defm "SERLOAD\t\tRead data from COM2 to memory\n\r"
-	defm "SET\t\tSet system var\n\r"
-	defm "SHOW\t\tShow system var values\n\r"
+	defm "SET\t\tManage system var\n\r"
 	defm "SLEEP\t\tSleep for some seconds\n\r"
 	defm "TYPE\t\tShow file contents\n\r"
 	defm "UPTIME\t\tShow time since boot\n\r"
@@ -634,6 +632,8 @@ SerialLoadStr:
 
 Set:
 	ld		a, (dos_argc)
+	cp		0
+	jr		z, Show
 	cp		2
 	jr		z, SetValidate
 	;; Argc error
@@ -665,35 +665,6 @@ SetDoIt:
 	inc		hl
 	ld		(hl), b
 	ret
-
-ExpectsExactlyTwoArgsStr:
-	defm		" expects exactly two args \0"
-SetArgsStr:
-	defm		"(var name, value).\r\n\0"
-SetBadVarStr:
-	defm		"Unrecognised var.  Run SHOW to see all vars.\r\n\0"
-
-execaddrstr:
-	defm		"EXECADDR\0"
-fileaddrstr:
-	defm		"FILEADDR\0"
-sysstackstr:
-	defm		"SYSSTACK\0"
-prgstackstr:
-	defm		"PRGSTACK\0"
-
-SetTable:
-	defw execaddrstr, execaddr
-	defw fileaddrstr, fileaddr
-	defw sysstackstr, sysstack
-	defw prgstackstr, prgstack
-	defw nullstr, 0x0000
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;
-; SHOW
-;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 Show:
 	ld		de, SetTable
@@ -730,6 +701,30 @@ ShowLoop:
 	pop		hl
 	call		PrintStringA
 	jr		ShowLoop
+
+ExpectsExactlyTwoArgsStr:
+	defm		" expects exactly two args \0"
+SetArgsStr:
+	defm		"(var name, value).\r\n\0"
+SetBadVarStr:
+	defm		"Unrecognised var.  Run SET to see all vars.\r\n\0"
+
+execaddrstr:
+	defm		"EXECADDR\0"
+fileaddrstr:
+	defm		"FILEADDR\0"
+sysstackstr:
+	defm		"SYSSTACK\0"
+prgstackstr:
+	defm		"PRGSTACK\0"
+
+SetTable:
+	defw execaddrstr, execaddr
+	defw fileaddrstr, fileaddr
+	defw sysstackstr, sysstack
+	defw prgstackstr, prgstack
+	defw nullstr, 0x0000
+
 SeparatorStr:
 	defm		":\t\0"
 
