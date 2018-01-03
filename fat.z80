@@ -195,23 +195,35 @@ TerminateChain:
 
 SeekCluster:
 	; jump to cluster in HL
+	push	hl
+	push	hl
 	ld	(fat_cluster), hl	; Keep target cluster
 	ex	de,hl			; Now cluster is in DE
 	ld	hl, (start_of_fat)
 	ld	e, d			; Set DE to 0D
 	ld	d, 0
 	add	hl, de			; HL is now desired FAT sector
-	ld	(fat_sector), hl
 
-	ld	b, h			; Setup registers for CF_READ
-	ld	c, l
+	; Do we need to hit the disk?
+	ld	de, (fat_sector)	; Get current sector in DE
+	ld	(fat_sector), hl	; Write new sector from  HL
+	ex	de, hl			; HL=old, DE=new
+	or	a 			; Clear carry flag before sbc
+	sbc	hl, de			; If HL-DE=0, HL=DE
+	ld	a, h
+	or	l
+	jr	z, SeekClusterBufferUpToDate
+
+	ld	b, d			; Setup registers for CF_READ
+	ld	c, e
 	ld	de, 0
 	ld	hl, fat_buffer
 	ld	a, 1
 	rst	0x20	; call CF_READ
 
+SeekClusterBufferUpToDate:
 	ld	hl, fat_buffer
-	ld	de, (fat_cluster)
+	pop	de
 	ld	d, 0			; Set DE to 0E
 	add	hl, de
 	add	hl, de
@@ -219,7 +231,7 @@ SeekCluster:
 	ld	a, e
 	ld	(fat_index), a
 
-	ld	hl, (fat_cluster)	; Don't clobber HL
+	pop	hl			; Don't clobber HL
 	ret
 
 ;;;;;;;;;;;;
