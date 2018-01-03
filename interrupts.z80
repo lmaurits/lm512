@@ -42,6 +42,8 @@ BufferConsumeLoop:
 	jr	z, StackHandleCtrlZ
 	cp	0x18		; Ctrl X
 	jr	z, StackHandleCtrlX
+	cp	0x10		; Ctrl P
+	jr	z, ToggleUARTPause
 	; Copy UART char into buffer
 	ld	hl, (uart_buffer_pointer)
 	ld	(hl), a
@@ -49,6 +51,11 @@ BufferConsumeLoop:
 	ld	(uart_buffer_pointer), hl
 	ld	hl, uart_buffer_size
 	inc	(hl)
+	jr	BufferConsumeLoop
+ToggleUARTPause:
+	ld	a, (uart_pause)
+	cpl
+	ld	(uart_pause), a
 	jr	BufferConsumeLoop
 StackHandleCtrlC:
 	; This is a Ctrl-C, terminate current process!

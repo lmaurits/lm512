@@ -41,7 +41,7 @@ SOMETHING:		jp 0x000		; 16
 ; DOS call table
 
 DOS_READ_CHAR:		jp ReadChar		; 1
-DOS_WRITE_CHAR:		jp WriteA		; 2
+DOS_WRITE_CHAR:		jp WriteChar		; 2
 DOS_STAT_FILE:		jp StatFile		; 3
 DOS_READ_FILE:		jp ReadFile		; 4
 DOS_WRITE_FILE:		jp WriteFile		; 5

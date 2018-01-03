@@ -36,6 +36,7 @@ sleep_tick:		defs 1
 sleep_countdown:	defs 1
 microsleep_countdown:	defs 1
 uptime:			defs 8
+uart_pause:		defs 1
 uart_buffering:		defs 1
 uart_buffer:		defs 16
 uart_buffer_pointer:	defs 2

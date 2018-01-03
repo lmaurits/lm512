@@ -35,6 +35,7 @@ ZeroLoop:
 	ld		(suspend_stack_pointer), hl
 	; Setup UART buffering
 	ld		a, 0x00
+	ld		(uart_pause), a
 	ld		(uart_buffering), a
 	ld		(uart_buffer_size), a
 	ld		hl, uart_buffer
@@ -177,6 +178,19 @@ ReadCharWait:
 GetSysMemPtr:
 	ld		ix, SYSPAGE
 	ret
+
+WriteChar:
+	push		af
+WriteCharLoop:
+	ld		a, (uart_pause)
+	cp		0
+	jr		nz, WriteCharWait
+	pop		af
+	call		WriteA
+	ret
+WriteCharWait:
+	halt
+	jr		WriteCharLoop
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
@@ -1425,23 +1439,28 @@ TypeValidate:
 	ld		hl, (fileaddr)
 	ld		d, b
 	ld		e, c
+
+	ld		a, 0xFF
+	ld		(uart_buffering), a
 TypeLoop:
 	ld	a, (hl)
 	cp	0x0A	; newline
 	jr	z, TypeNewline
-	call	SERIAL_WRITE_A
+	call	WriteChar
 TypeIncrement:
 	inc	hl
 	dec	de
 	ld	a, d
 	or	e
 	jr	nz, TypeLoop
+	ld		a, 0x00
+	ld		(uart_buffering), a
 	ret
 TypeNewline:
 	ld	a, "\r"
-	call	SERIAL_WRITE_A
+	call	WriteChar
 	ld	a, "\n"
-	call	SERIAL_WRITE_A
+	call	WriteChar
 	jr	TypeIncrement
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
