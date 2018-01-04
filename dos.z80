@@ -958,15 +958,15 @@ LoadValidate:
 	ret		nz
 	; Parse address and store on stack
 	call		Read16bit
-	ld		h, b
-	ld		l, c
+	ld		d, b
+	ld		e, c
 	jr		LoadFile
 LoadFileToFileAddr:
-	ld		hl, (dos_argv)
 	ld		de, (fileaddr)
 	; Dent *should* now be pointed at our target
 	; Read the file into memory
 LoadFile:
+	ld		hl, (dos_argv)
 	call		ReadFile
 	jp		nz, BadFileCallback
 	ret
