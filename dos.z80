@@ -38,7 +38,7 @@ DosInit:
 	; Initialise filesystem
 	call		InitFAT
 	; Check for AUTOEXEC.BAT
-	call		DosAutoExec
+;	call		DosAutoExec
 	; Start processing commands
 	jr DosLoop
 	welcomestr: defm "Welcome to LM-512 microcomputer system.\n\r\0"
@@ -967,6 +967,7 @@ LoadFileToFileAddr:
 	; Read the file into memory
 LoadFile:
 	ld		hl, (dos_argv)
+	ld		a, 0
 	call		ReadFile
 	jp		nz, BadFileCallback
 	ret
@@ -1053,6 +1054,7 @@ ExecCore:
 	; - Pointer to filename immediately below that
 	pop		de
 	pop		hl
+	ld		a, 0
 	call		ReadFile
 	jp		nz, BadFileCallback
 	; Setup stack
@@ -1127,29 +1129,44 @@ Type:
 TypeValidate:
 	call		ValidateOneExistingFile
 	ret		nz
-	ld		de, (fileaddr)
-	call		ReadFile
-	jp		nz, BadFileCallback
-	ld		hl, (fileaddr)
-	ld		d, b
-	ld		e, c
 
 	ld		a, 0xFF
 	ld		(uart_buffering), a
+	jr		TypeSectorLoopEntry
+TypeSectorLoop:
+	ld		hl, 0x0000
+TypeSectorLoopEntry:
+	ld		de, fat_sector_buffer
+	ld		a, 1
+	call		ReadFile
+	jp		nz, BadFileCallback
+	ld		d, b
+	ld		e, c
+
+	ld		a, b
+	or		c
+	cp		0
+	jr		z, TypeEnd
+
+	ld		hl, fat_sector_buffer
 TypeLoop:
-	ld	a, (hl)
-	cp	0x0A	; newline
-	jr	z, TypeNewline
-	call	WriteChar
+	ld		a, (hl)
+	cp		0x0A	; newline
+	jr		z, TypeNewline
+	call		WriteChar
 TypeIncrement:
-	inc	hl
-	dec	de
-	ld	a, d
-	or	e
-	jr	nz, TypeLoop
+	inc		hl
+	dec		de
+	ld		a, d
+	or		e
+	jr		nz, TypeLoop
+	jr		TypeSectorLoop
+
+TypeEnd:
 	ld		a, 0x00
 	ld		(uart_buffering), a
 	ret
+
 TypeNewline:
 	ld	a, "\r"
 	call	WriteChar

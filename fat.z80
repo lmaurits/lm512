@@ -528,23 +528,80 @@ SaveRootDir:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ReadFile:
-	; Load the contents of file whose name is pointed at by HL
-	; into memory at location DE
-	push	de
-	call	OpenFile
-	pop	hl
-	ret	nz
-ReadFileLoop:
-	call	ReadSector
-	jr	nz, ReadFileLoop
-	ld	bc, (size_in_bytes)
-	ret
+	; INPUTS
+	;
+	; A:  Number of consecutive sectors to read (0=whole file)
+	; HL: Pointer to filename or 0x0000 to continue file
+	; DE: Memory location to load file to
+	;
+	; OUTPUTS
+	;
+	; A:  0 if success, else error code
+	; HL: 0x0000
+	; DE: Pointer to next byte after read data
+	; BC: Bytes read
+	ld	(memory_pointer), de
+	ex	af, af'
+	ld	a, h
+	or	l
+	cp	0
+	jr	z, ReadFileContinue
 
-OpenFile:
+	; Find file
 	call	FindFile
-	ret	nz
+	ret	nz	; FindFileFailed
 	ld	hl, (starting_cluster)
 	call	SeekCluster
+	ld	a, 00
+	ld	(all_done), a
+	jr	FileNotEmpty
+
+ReadFileContinue:
+	ld	a, (all_done)
+	cp	0xFF
+	jr	nz, FileNotEmpty
+	ld	a, 0
+	ld	bc, 0x0000
+	ld	de, (memory_pointer)
+	ret
+
+FileNotEmpty:
+	ld	hl, 0x0000
+	ld	(bytes_read), hl
+	ld	hl, (memory_pointer)
+
+	ex	af, af'
+	cp	0
+	jr	z, ReadWholeFileLoop
+
+ReadFilePartial:
+	ld	b, a
+ReadFilePartialLoop:
+	push	bc
+	call	ReadSector
+	pop	bc
+	jr	z, ReadFileAdjustBytes
+	djnz	ReadFilePartialLoop
+	jr	ReadFileReturn
+
+ReadWholeFileLoop:
+	call	ReadSector
+	jr	nz, ReadWholeFileLoop
+ReadFileAdjustBytes:
+	ld	a, 0xFF
+	ld	(all_done), a
+	ld	de, (size_in_bytes)
+	ld	a, d
+	and	1
+	ld	d, a
+	ld	(bytes_read), de
+
+ReadFileReturn:
+	ld	a, 0
+	cp		a	; Set zero flag
+	ex	de, hl
+	ld	hl, 0x000
+	ld	bc, (bytes_read)
 	ret
 
 ReadSector:
@@ -561,6 +618,10 @@ ReadSector:
 	ld	a, 0x01
 	rst	0x20	; call CF_READ
 	push	hl
+	ld	hl, (bytes_read)
+	ld	de, 0x200
+	add	hl, de	; FIX oh god, need to be 32 bit!
+	ld	(bytes_read), hl
 	; Is there another cluster?
 	call	TestEOF
 	pop	hl

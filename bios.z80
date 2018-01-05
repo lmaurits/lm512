@@ -45,7 +45,7 @@ DOS_WRITE_CHAR:		jp WriteChar		; 2
 DOS_STAT_FILE:		jp StatFile		; 3
 DOS_READ_FILE:		jp ReadFile		; 4
 DOS_WRITE_FILE:		jp WriteFile		; 5
-DOS_APPEND_FILE:	jp OpenFile		; 6
+DOS_APPEND_FILE:	jp WriteFile		; 6
 DOS_DEL_FILE:		jp DeleteFile		; 7
 DOS_RENAME_FILE:	jp RenameFile		; 8
 DOS_COPY_FILE:		jp ReadSector		; 9
