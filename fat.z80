@@ -594,7 +594,12 @@ ReadFileAdjustBytes:
 	ld	a, d
 	and	1
 	ld	d, a
-	ld	(bytes_read), de
+	ld	hl, (bytes_read)
+	ld	bc, 512
+	or	a ; Clear carry flag before sbc
+	sbc	hl, bc
+	add	hl, de
+	ld	(bytes_read), hl
 
 ReadFileReturn:
 	ld	a, 0
@@ -650,36 +655,7 @@ WriteFile:
 	ld	hl, (fat_cluster)
 	ld	(new_file_start_clu), hl
 
-	; Now write all the sectors in the chain
-WriteFileWriteSector:
-	;; Write a sector
-	ld	hl, (fat_cluster)
-	call	ClusterToSector
-	ld	hl, (memory_pointer)
-	ld	a, 1
-	call	CF_WRITE
-	;; Save memory pointer
-	ld	(memory_pointer), hl
-	;; Figure out if we're done or need another sector
-	ld	hl, (bytes_remaining)
-	ld	de, 512
-	or	a ; Clear carry flag before sbc
-	sbc	hl, de
-	;; If that sbc went negative, we're done
-	jr	c, WriteFileEndChain
-	;; If not, we need to allocate another sector in the chain
-	ld	(bytes_remaining), hl
-
-	ld	hl, (fat_cluster)
-	push	hl
-	call	FindNextAvailCluster
-	pop	hl
-	ld	de, (fat_cluster)
-	call	ChainClusters
-	jr	WriteFileWriteSector
-WriteFileEndChain:
-	call	TerminateChain
-
+	call	WriteFileWriteAllSectors
 	; Now add the corresponding directory entry
 	call	ResetRootDir
 	call	FindFirstAvailDirEnt
@@ -728,6 +704,117 @@ WriteFileEndChain:
 	; dent, because we clobbered the old one.
 	call	AdvanceDirEnt
 	call	MakeDirEndEntry
+	call	UpdateRootDir
+	call	SaveRootDir
+	ret
+
+WriteFileWriteAllSectors:
+	; Now write all the sectors in the chain
+WriteFileWriteSector:
+	;; Write a sector
+	ld	hl, (fat_cluster)
+	call	ClusterToSector
+	ld	hl, (memory_pointer)
+	ld	a, 1
+	call	CF_WRITE
+	;; Save memory pointer
+	ld	(memory_pointer), hl
+	;; Figure out if we're done or need another sector
+	ld	hl, (bytes_remaining)
+	ld	de, 512
+	or	a ; Clear carry flag before sbc
+	sbc	hl, de
+WriteFileAppendFileEntry:
+	;; If that sbc went negative, we're done
+	jr	c, WriteFileEndChain
+	;; If not, we need to allocate another sector in the chain
+	ld	(bytes_remaining), hl
+
+	ld	hl, (fat_cluster)
+	push	hl
+	call	FindNextAvailCluster
+	pop	hl
+	ld	de, (fat_cluster)
+	call	ChainClusters
+	jr	WriteFileWriteSector
+WriteFileEndChain:
+	call	TerminateChain
+	ret
+
+;;;;;;;;;
+
+AppendFile:
+	; Write BC bytes from memory, starting at DE, to disk,
+	; appending to file whose filename is pointed to by HL.
+	; First, save params to memory
+	ld	(memory_pointer), de
+	ld	(total_bytes), bc
+	ld	(bytes_remaining), bc
+	call	Monitor
+	call	FindFile
+	ret	nz
+
+	; Skip to the final cluster
+	ld	hl, (starting_cluster)
+	call	SeekCluster
+
+AppendFileLoop:
+	call	TestEOF
+	jr	z, AppendFileFinalFound
+	call	FollowClusterChain
+	jr	AppendFileLoop
+
+AppendFileFinalFound:
+	; Read final sector into buffer
+	ld	hl, fat_sector_buffer
+	call	ReadSector
+	call	Monitor
+	; Find number of bytes used in last sector
+	ld	de, (size_in_bytes)
+	ld	a, d
+	and	1
+	ld	d, a
+	; First figure out amount of free space in final sector
+	or	a			; Clear carry flag
+	ld	hl, 512
+	sbc	hl, de
+	push	hl	; Two copies of free space
+	push	hl
+	; Now find address at which this free space starts
+	ld	hl, fat_sector_buffer
+	add	hl, de
+	; Append to final sector
+	pop	bc 	; BC = free space
+	ex	de,hl	; DE = start of free space
+	ld	hl, (memory_pointer)
+	ldir
+	call	Monitor
+	push	hl	; Pointer to rest of data to append
+	; Write updated final sector to disk
+	ld	hl, (fat_cluster)
+	call	ClusterToSector
+	ld	hl, fat_sector_buffer
+	ld	a, 1
+	call	CF_WRITE
+	; Now we are basically in the middle of a standard
+	; WriteFile, just need to set some things up...
+	pop	hl
+	ld	(memory_pointer), hl
+	ld	hl, (bytes_remaining)
+	pop	bc ; free space in final sector
+	or	a			; Clear carry flag
+	sbc	hl, bc
+	call	WriteFileAppendFileEntry
+	; Update dir entry
+	ld	de, (total_bytes)
+	ld	hl, (size_in_bytes)
+	add	hl, de
+	ld	(size_in_bytes), hl
+	jr	nc, AppendSaveRootDir
+	ld	hl, (size_in_bytes+2)
+	inc	hl
+	ld	(size_in_bytes+2), hl
+AppendSaveRootDir:
 	call	UpdateRootDir
 	call	SaveRootDir
 	ret
