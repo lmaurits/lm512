@@ -785,6 +785,14 @@ AppendFileFinalFound:
 	; Append to final sector
 	pop	bc 	; BC = free space
 	ex	de,hl	; DE = start of free space
+	; Do we actually have less to copy than we do free space?
+	ld	hl, (bytes_remaining)
+	or	a			; Clear carry flag
+	sbc	hl, bc
+	jr	nc, AppendFileFoo
+	; If so, use bytes_remaining, not free space for bc
+	ld	bc, (bytes_remaining)
+AppendFileFoo:
 	ld	hl, (memory_pointer)
 	ldir
 	push	hl	; Pointer to rest of data to append
