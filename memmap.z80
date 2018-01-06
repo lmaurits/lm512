@@ -132,6 +132,8 @@ total_bytes:		defs 2
 new_file_start_clu:	defs 2
 filename_buffer:	defs 16
 all_done:		defs 1
+read_cluster:		defs 2
+write_cluster:		defs 2
 ; Scratch stuff ;;;;;;;;;;;;;;
 target_filename_ptr:	defs 2
 need_to_add_dir_end:	defs 1

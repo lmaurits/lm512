@@ -908,8 +908,8 @@ Cp00:
 	call		ValidateTwoFilesFirstExistsHandleOverwrite
 	ret		nz
 	ld		hl, (dos_argv)
-	ld		de, (fileaddr)
-	call		ReadFile
+	ld		de, (dos_argv+2)
+	call		CopyFile
 	jp		nz, BadFileCallback
 	ld		hl, (dos_argv+2)
 	ld		de, (fileaddr)

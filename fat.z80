@@ -700,6 +700,7 @@ WriteFile:
 	cp	0
 	ret	z
 
+WriteFileMakeNewEndOfDir:
 	; If we're here, we need to add a new end-of-dir marker
 	; dent, because we clobbered the old one.
 	call	AdvanceDirEnt
@@ -818,6 +819,93 @@ AppendSaveRootDir:
 	call	UpdateRootDir
 	call	SaveRootDir
 	ret
+
+
+;;;;;;;;;
+
+CopyFile:
+; HL old
+; DE new
+	push	de
+	call	FindFile
+	pop	de
+	ret	nz
+	ld	(target_filename_ptr), de
+	ld	hl, (starting_cluster)
+	ld	(read_cluster), hl
+
+	call	FindFirstAvailCluster
+	ld	hl, (fat_cluster)
+	ld	(new_file_start_clu), hl
+	ld	(write_cluster), hl
+
+CopyFileLoop:
+	; Read
+	ld	hl, (read_cluster)
+	call	SeekCluster
+	ld	hl, fat_sector_buffer
+	call	ReadSector
+	jr	nz, CopyFileWrite	
+	ld	a, 0xff
+	ld	(all_done), a
+CopyFileWrite:
+	; Write
+	ld	hl, (fat_cluster)
+	ld	(read_cluster), hl
+	ld	hl, (write_cluster)
+	call	SeekCluster
+	call	ClusterToSector
+	ld	hl, fat_sector_buffer
+	ld	a, 0x01
+	call	CF_WRITE
+	ld	a, (all_done)
+	cp	0xff
+	jr	z, CopyFileDone
+	call	FindNextAvailCluster
+	ld	hl, (fat_cluster)
+	ld	(write_cluster), hl
+	jr	CopyFileLoop
+	exx
+
+CopyFileDone:
+	call	TerminateChain
+
+CopyFileMakeDent:
+	; Copy other dent to sector_buffer
+	ld	hl, dir_entry_buffer
+	ld	de, fat_sector_buffer
+	ld	bc, 32
+	push	bc
+	push	de
+	push	hl
+	ldir
+
+	call	ResetRootDir
+	call	FindFirstAvailDirEnt
+	ex	af,af'		; Store A, which tells us whether
+				; or not we need to add a new
+				; dir end marker
+	pop	de
+	pop	hl
+	pop	bc
+	ldir
+
+	;; Copy the provided filename into the buffer
+	ld	hl, (target_filename_ptr)
+	ld	de, filename_buffer
+	ld	bc, 16
+	ldir
+	;; Now fill the dent with it
+	call	ReverseBuildFilenameString
+
+	;; Write theupdated directory entry back to disk
+	call	UpdateRootDir
+	call	SaveRootDir
+	ex	af,af'		; Restore A, which flags whether
+				; or not we need to write a dir end
+	cp	0
+	ret	z
+	jp	WriteFileMakeNewEndOfDir
 
 ;;;;;;;;;;;;
 
