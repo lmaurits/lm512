@@ -751,7 +751,6 @@ AppendFile:
 	ld	(memory_pointer), de
 	ld	(total_bytes), bc
 	ld	(bytes_remaining), bc
-	call	Monitor
 	call	FindFile
 	ret	nz
 
@@ -769,7 +768,6 @@ AppendFileFinalFound:
 	; Read final sector into buffer
 	ld	hl, fat_sector_buffer
 	call	ReadSector
-	call	Monitor
 	; Find number of bytes used in last sector
 	ld	de, (size_in_bytes)
 	ld	a, d
@@ -789,7 +787,6 @@ AppendFileFinalFound:
 	ex	de,hl	; DE = start of free space
 	ld	hl, (memory_pointer)
 	ldir
-	call	Monitor
 	push	hl	; Pointer to rest of data to append
 	; Write updated final sector to disk
 	ld	hl, (fat_cluster)
