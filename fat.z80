@@ -903,6 +903,10 @@ CopyFileMakeDent:
 	;; Now fill the dent with it
 	call	ReverseBuildFilenameString
 
+	;; Replace starting sector
+	ld	hl, (new_file_start_clu)
+	ld	(starting_cluster), hl
+
 	;; Write theupdated directory entry back to disk
 	call	UpdateRootDir
 	call	SaveRootDir
