@@ -866,11 +866,14 @@ CopyFileWrite:
 	ld	a, (all_done)
 	cp	0xff
 	jr	z, CopyFileDone
+	ld	hl, (fat_cluster)	; Put prev cluster on stack
+	push	hl
 	call	FindNextAvailCluster
-	ld	hl, (fat_cluster)
-	ld	(write_cluster), hl
+	pop	hl			; Chain new to old cluster
+	ld	de, (fat_cluster)
+	ld	(write_cluster), de
+	call	ChainClusters
 	jr	CopyFileLoop
-	exx
 
 CopyFileDone:
 	call	TerminateChain
