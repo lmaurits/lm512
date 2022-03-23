@@ -3,20 +3,17 @@ ConvertToUpper:
 ConvertToUpper00:
 	ld a, (hl)
 	cp $0
-	jr		z, ConvertToUpper03
+	jr		z, ConvertToUpper02
 	cp 'a'
-	jr z, ConvertToUpper01
-	jr c, ConvertToUpper02
-	cp 'z'
-	jr z, ConvertToUpper01
-	jr nc, ConvertToUpper02
-ConvertToUpper01:
-	sub a, 32
+	jr c, ConvertToUpper01
+	cp 'z'+1
+	jr nc, ConvertToUpper01
+	sub a,'a'-'A'
 	ld (hl), a
-ConvertToUpper02:
+ConvertToUpper01:
 	inc hl
 	jr ConvertToUpper00
-ConvertToUpper03:
+ConvertToUpper02:
 	pop		hl
 	ret
 
